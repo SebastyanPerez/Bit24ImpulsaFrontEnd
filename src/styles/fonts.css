@@ -1,0 +1,12 @@
+/* Montserrat — sustituto corporativo de Gotham (geométrica, limpia, sin serif) */
+/* Nunito — sustituto de Calibri para texto de cuerpo */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;600;700;800;900&family=Nunito:wght@300;400;500;600;700&display=swap');
+
+/*
+  Mapa tipográfico corporativo Bit24 Impulsa
+  Gotham Black       → Montserrat 800-900
+  Gotham Book        → Montserrat 400-500
+  Gotham Extra Light → Montserrat 200-300
+  Calibri Regular    → Nunito 400
+  Calibri Bold       → Nunito 700
+*/

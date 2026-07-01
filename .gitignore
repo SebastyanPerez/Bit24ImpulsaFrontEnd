@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+/dist/
+/build/
+/.vite/
+/coverage/
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Local configuration and sensitive data
+*.local
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Logs
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Editors and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Do not commit sensitive information such as API keys, tokens, passwords, local database files, or private configuration.

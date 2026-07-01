@@ -1,0 +1,186 @@
+Crea una web-app demo funcional llamada **Bit24 Impulsa**, que represente aproximadamente el **20 % inicial del proyecto** para el curso Innovación y Transformación Digital.
+
+Contexto del proyecto:
+Bit24 Impulsa es una solución innovadora propuesta para KPI Centro Tecnológico Empresarial S.R.L., empresa detrás de la plataforma Bit24. La solución será validada inicialmente en REGENDA, empresa piloto de repuestos y accesorios para motocicletas. El objetivo de Bit24 Impulsa es mejorar el proceso de adopción digital después de implementar Bit24, integrando capacitación por roles, soporte, alertas, seguimiento de avance, IA generativa simulada y panel del responsable interno de adopción.
+
+La web-app debe ser una demo preliminar, no un sistema final. Debe simular el funcionamiento con datos ficticios de REGENDA y permitir mostrar en exposición que ya existe un avance tangible del 20 %.
+
+Tecnologías sugeridas:
+
+* Frontend: React o HTML/CSS/JavaScript.
+* Diseño responsive para laptop.
+* Datos simulados en JSON o arrays internos.
+* No requiere backend real.
+* No requiere login real.
+* La IA generativa debe ser simulada con respuestas predefinidas.
+* Las alertas WhatsApp deben simularse visualmente, no enviarse realmente.
+
+Estructura obligatoria de la web-app:
+
+1. **Pantalla de login por rol**
+
+   * Logo o título: Bit24 Impulsa.
+   * Selector de rol: Ventas, Caja, Almacén, Compras, Administración y Responsable interno.
+   * Botón: “Ingresar al dashboard”.
+   * Debe indicar que REGENDA es el piloto.
+
+2. **Dashboard inicial post-login**
+
+   * Esta debe ser la pantalla principal después del login.
+   * Mostrar tarjetas con:
+
+     * Progreso de adopción.
+     * Tareas pendientes.
+     * Alertas activas.
+     * Casos de soporte.
+     * Última actividad.
+   * Incluir menú lateral o barra superior con accesos a:
+
+     * Dashboard.
+     * Ruta de adopción.
+     * Microaprendizaje.
+     * Asistente IA.
+     * Alertas WhatsApp.
+     * Soporte.
+     * Panel del responsable.
+
+3. **Ruta de adopción por rol**
+
+   * Mostrar una lista de tareas según el rol seleccionado.
+   * Ejemplo para Ventas:
+
+     * Registrar venta rápida.
+     * Consultar stock.
+     * Emitir comprobante.
+     * Revisar cierre de caja.
+   * Cada tarea debe tener estado: completado, pendiente o en proceso.
+   * Incluir barra de progreso visual.
+
+4. **Microaprendizaje**
+
+   * Mostrar una guía breve tipo tarjeta.
+   * Ejemplo:
+
+     * Título: “Cómo registrar una venta rápida”.
+     * Pasos breves del proceso.
+     * Botón: “Marcar como aprendido”.
+   * Al marcar como aprendido, debe actualizarse visualmente el progreso o el estado.
+
+5. **Asistente IA generativa simulada**
+
+   * Debe verse explícitamente una interfaz de chat.
+   * El usuario debe poder escribir una consulta o seleccionar una pregunta sugerida.
+   * Ejemplos de preguntas:
+
+     * “¿Cómo registro una devolución?”
+     * “¿Cómo reviso el stock?”
+     * “¿Qué hago si no aparece un producto?”
+   * La IA debe responder en lenguaje natural con pasos breves.
+   * Ejemplo de respuesta:
+     “Para registrar una devolución, ingresa a Ventas, busca el comprobante, selecciona Nota de crédito y verifica que el producto retorne al stock. También puedes revisar la guía rápida de devoluciones.”
+   * Incluir un botón o enlace visual: “Ver guía relacionada”.
+
+6. **Alertas automatizadas por WhatsApp simuladas**
+
+   * Crear una pantalla donde se vea la estructura de una alerta.
+   * Debe mostrar:
+
+     * Nombre del negocio: REGENDA.
+     * Área: Almacén, Ventas o Caja.
+     * Condición detectada: por ejemplo, “3 días sin actualización de stock”.
+     * Mensaje sugerido.
+     * Acción recomendada.
+     * Botón: “Ver en Bit24 Impulsa”.
+   * Incluir opciones para activar o desactivar alertas.
+   * No debe enviar mensajes reales; solo simular la vista previa.
+
+7. **Soporte con trazabilidad**
+
+   * Formulario para registrar un caso de soporte:
+
+     * Categoría.
+     * Descripción.
+     * Evidencia opcional.
+     * Prioridad.
+   * Mostrar una lista de casos simulados:
+
+     * Pendiente.
+     * En atención.
+     * Resuelto.
+   * Cada caso debe mostrar responsable y estado.
+
+8. **Panel del responsable interno de adopción**
+
+   * Debe mostrar resumen por áreas:
+
+     * Ventas.
+     * Caja.
+     * Almacén.
+     * Compras.
+     * Administración.
+   * Mostrar:
+
+     * Porcentaje de avance.
+     * Última actividad.
+     * Nivel de riesgo: bajo, medio o alto.
+     * Acción sugerida.
+   * Este panel representa al responsable interno de adopción en REGENDA.
+
+9. **Flujo de navegación explícito**
+
+   * El usuario debe poder volver siempre al dashboard.
+   * El dashboard debe ser claramente la pantalla inicial post-login.
+   * Desde el dashboard debe poder accederse a IA, alertas, soporte y ruta de adopción.
+   * No incluir “Inventario” ni “Fiados” como módulos principales, porque pertenecen a Bit24 operativo y no al alcance de Bit24 Impulsa.
+
+10. **Diseño visual**
+
+* Estilo profesional, limpio y universitario.
+* Usar colores relacionados con tecnología: azul, blanco, gris y acentos verdes o morados.
+* Tarjetas, tablas, barras de progreso y badges de estado.
+* Debe verse bien en pantalla de laptop para exposición.
+* Agregar textos breves que expliquen que es una demo preliminar del 20 %.
+
+11. **Pantalla o sección de tecnologías usadas**
+
+* Incluir una sección llamada “Tecnologías aplicadas”.
+* Mostrar tarjetas con:
+
+  * Cloud: almacenamiento y despliegue futuro.
+  * IA generativa: asistencia en lenguaje natural.
+  * API WhatsApp: alertas automatizadas.
+  * Base de datos: registros de usuarios, tareas y soporte.
+  * GUI web: interfaz de adopción.
+  * Seguridad: roles, permisos y trazabilidad.
+
+12. **Datos simulados**
+    Usar datos ficticios de REGENDA:
+
+* Usuarios:
+
+  * Ana Torres - Ventas.
+  * Carlos Ruiz - Almacén.
+  * Miguel Salazar - Caja.
+  * Laura Pérez - Administración.
+* Progreso:
+
+  * Ventas: 75 %.
+  * Caja: 60 %.
+  * Almacén: 40 %.
+  * Compras: 55 %.
+  * Administración: 80 %.
+* Alertas:
+
+  * Almacén: 3 días sin actualización de stock.
+  * Caja: cierre pendiente.
+  * Ventas: usuario nuevo sin completar guía.
+* Casos de soporte:
+
+  * “No aparece producto en búsqueda” - En atención.
+  * “Duda sobre nota de crédito” - Resuelto.
+  * “Error al registrar recepción” - Pendiente.
+
+Resultado esperado:
+Generar una web-app navegable que pueda abrirse en navegador y usarse como demo en exposición. Debe demostrar que el proyecto ya tiene un desarrollo preliminar equivalente al 20 %, centrado en el flujo básico de adopción digital: login, dashboard, ruta, microaprendizaje, IA, alertas WhatsApp, soporte y panel del responsable interno.
+
+También agregar comentarios en el código para explicar qué parte representa cada módulo.
