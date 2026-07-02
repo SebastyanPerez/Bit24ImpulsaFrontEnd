@@ -9,66 +9,72 @@
 
 ---
 
-## Descripción del proyecto
+## 📌 Descripción del Proyecto
 
-**Bit24 Impulsa** es un proyecto universitario orientado a la adopción digital en entorno ERP (caso piloto: **REGENDA**).  
-Este repositorio contiene el **frontend web**, construido en React y trabajado bajo Scrum.
+**Bit24 Impulsa** es un proyecto universitario orientado a la adopción digital en entorno ERP (caso piloto: **REGENDA**). Este repositorio contiene el **frontend web**, construido en React y trabajado bajo el marco ágil **Scrum**.
 
-La aplicación actualmente está en construcción y ya cuenta con base visual, navegación interna y autenticación conectada al backend.
+La interfaz permite a colaboradores de distintas áreas (Ventas, Caja, Almacén, Compras, Administración) y a roles de gestión (Administrador, Responsable Interno) autenticarse, visualizar su progreso de adopción digital y acceder a los módulos habilitados según su rol.
 
 ---
 
-## Objetivo del frontend
+## 🎯 Objetivo del Frontend
 
 Construir una interfaz moderna, modular y escalable que permita:
 
-- autenticar usuarios según rol;
-- visualizar módulos del sistema de adopción;
-- evolucionar por incrementos de sprint sin bloquear el avance.
+- Autenticar usuarios contra el backend real según su rol.
+- Visualizar módulos del sistema de adopción (ruta de aprendizaje, microaprendizaje, IA, alertas, soporte).
+- Habilitar gestión administrativa (usuarios) para el rol Administrador.
+- Evolucionar por incrementos de Sprint sin bloquear el avance general.
 
 ---
 
-## Arquitectura (estado actual)
+## 🛠️ Arquitectura del Proyecto
 
-El frontend sigue una organización por capas dentro de `src/app`:
+El frontend sigue una organización por capas dentro de `src/app`, en línea con la separación de responsabilidades del backend:
 
-- **`api/`**: servicios HTTP y cliente Axios (`auth`, `axiosClient`).
-- **`context/`**: estado global de sesión (`AuthContext`).
+- **`api/`**: cliente HTTP centralizado (Axios) y servicios de autenticación.
+- **`context/`**: estado global de sesión (`AuthContext`) — token, usuario y rol activo.
 - **`components/`**:
-  - `layout/` (estructura principal, `AppShell`);
-  - `ui/` y `ui-shared/` (componentes reutilizables);
-  - `ProtectedRoute` para control de acceso.
-- **`pages/`**: pantallas de negocio.
-- **`data/`**: datos/configuración de demo utilizados en esta etapa.
+  - `layout/` → estructura principal de la app (`AppShell`: sidebar + navbar + contenido).
+  - `ui/` y `ui-shared/` → componentes reutilizables (shadcn/ui + wrappers propios).
+  - `ProtectedRoute` → control de acceso a rutas privadas.
+  - `figma/` → assets/componentes generados desde el diseño original de Figma.
+- **`pages/`**: pantallas de negocio, una por módulo del sistema.
+- **`data/`**: datos de demo/configuración usados mientras se integran endpoints reales.
 
-Flujo actual de autenticación:
+### Flujo de autenticación
 
-1. `LoginScreen` -> `POST /auth/login`
-2. `AuthContext` guarda token/usuario
-3. `ProtectedRoute` permite/deniega acceso
-4. `AppShell` renderiza navegación y vistas internas
+```
+LoginScreen
+    ↓ POST /auth/login
+AuthContext (guarda token + usuario)
+    ↓
+ProtectedRoute (permite/deniega acceso)
+    ↓
+AppShell (sidebar dinámico según rol + vistas internas)
+```
 
 ---
 
-## Estructura de carpetas
+## 📂 Estructura de Carpetas
 
 ```text
 src/
 ├── app/
 │   ├── api/
-│   │   ├── auth.ts
-│   │   └── axiosClient.ts
+│   │   ├── auth.ts              # login(correo, password)
+│   │   └── axiosClient.ts       # instancia Axios + baseURL + interceptor de token
 │   ├── components/
-│   │   ├── figma/
+│   │   ├── figma/                # assets/componentes exportados de Figma
 │   │   ├── layout/
-│   │   │   └── AppShell.tsx
-│   │   ├── ui/
-│   │   ├── ui-shared/
-│   │   └── ProtectedRoute.tsx
+│   │   │   └── AppShell.tsx      # sidebar + navbar + outlet de rutas
+│   │   ├── ui/                   # componentes base (shadcn/ui)
+│   │   ├── ui-shared/            # composiciones reutilizables propias
+│   │   └── ProtectedRoute.tsx    # guard de rutas privadas
 │   ├── context/
-│   │   └── AuthContext.tsx
+│   │   └── AuthContext.tsx       # sesión: token, usuario, login(), logout()
 │   ├── data/
-│   │   └── datosRegenda.ts
+│   │   └── datosRegenda.ts       # datos mock para vistas aún no conectadas
 │   ├── pages/
 │   │   ├── LoginScreen.tsx
 │   │   ├── DashboardView.tsx
@@ -79,137 +85,126 @@ src/
 │   │   ├── SoporteView.tsx
 │   │   ├── PanelResponsableView.tsx
 │   │   ├── TecnologiasView.tsx
-│   │   └── GestionUsuarios.tsx
-│   └── App.tsx
+│   │   └── GestionUsuarios.tsx   # CRUD de usuarios (solo rol Administrador)
+│   └── App.tsx                   # árbol de rutas + providers
 ├── styles/
 └── main.tsx
 ```
 
 ---
 
-## Tecnologías
+## 💻 Tecnologías Utilizadas
 
-- **React**
-- **Vite**
-- **TypeScript**
-- **Tailwind CSS**
-- **React Router**
-- **Axios**
+* **[React 18](https://react.dev/)**: librería principal de interfaz.
+* **[Vite 6](https://vitejs.dev/)**: bundler y dev server.
+* **[TypeScript](https://www.typescriptlang.org/)**: tipado estático en todo el proyecto.
+* **[Tailwind CSS](https://tailwindcss.com/)**: sistema de estilos utilitario.
+* **[React Router v7](https://reactrouter.com/)**: enrutamiento y protección de rutas.
+* **[Axios](https://axios-http.com/)**: cliente HTTP hacia el backend FastAPI.
+* **[shadcn/ui](https://ui.shadcn.com/)**: librería de componentes base (tablas, diálogos, formularios).
 
 ---
 
-## Instalación
+## 🚀 Instalación y Configuración
 
+### 1. Clonar el repositorio
+```bash
+git clone https://github.com/tu-usuario/Bit24ImpulsaFrontEnd.git
+cd Bit24ImpulsaFrontEnd
+```
+
+### 2. Instalar dependencias
 ```bash
 npm install
 ```
 
----
+### 3. Variables de entorno
 
-## Variables de entorno
+> ⚠️ **Estado actual**: la URL del backend todavía está fija (hardcodeada) en `src/app/api/axiosClient.ts` como `http://localhost:8000`. La variable de entorno de abajo es la convención recomendada para el próximo incremento, aún no integrada en el código.
 
-Actualmente la URL del backend está fija en `src/app/api/axiosClient.ts`:
-
-```ts
-baseURL: "http://localhost:8000"
-```
-
-Recomendación para próximos incrementos:
-
+Crea un archivo `.env` en la raíz:
 ```env
 VITE_API_BASE_URL=http://localhost:8000
 ```
 
-> Nota: esta variable aún no está integrada en el código.
-
----
-
-## Cómo ejecutar el proyecto
-
-### Desarrollo
-
+### 4. Ejecutar en desarrollo
 ```bash
 npm run dev
 ```
+Disponible en: [http://localhost:5173](http://localhost:5173)
 
-Abrir en navegador: `http://localhost:5173`
-
-### Build de producción
-
+### 5. Build de producción
 ```bash
 npm run build
 ```
 
 ---
 
-## Estado actual del Sprint (20%)
+## 📊 Estado Actual del Sprint 1
 
-- **Sprint**: Sprint 1 (2 semanas)
-- **Día estimado**: 3-4
-- **Avance general**: ~20%
+* **Duración**: 2 semanas (Sprint en curso - Día 3-4).
+* **Progreso general**: ~20% de avance estimado.
 
 ```text
 [████░░░░░░░░░░░░░░░░] 20% Completado
 ```
 
-### Situación real del desarrollo
+### ✅ Funcionalidades Implementadas
 
-- Base técnica del frontend lista.
-- Login conectado al backend y flujo de sesión funcionando.
-- Layout principal modularizado (`AppShell`).
-- Varias vistas aún dependen de datos simulados y requieren integración progresiva con API real.
+1. **Base técnica del proyecto**: React + Vite + TypeScript + Tailwind configurados y funcionando.
+2. **Enrutamiento**: React Router con árbol de rutas centralizado en `App.tsx`.
+3. **Autenticación real**: `LoginScreen` conectado a `POST /auth/login` del backend vía Axios.
+4. **Sesión**: `AuthContext` gestiona token y usuario autenticado.
+5. **Protección de rutas**: `ProtectedRoute` bloquea acceso a vistas internas sin sesión activa.
+6. **Layout principal**: `AppShell` modular con sidebar y navbar, desacoplado de las pantallas de negocio.
+7. **Separación por pantallas**: un archivo por vista de negocio (Dashboard, Ruta, Microaprendizaje, IA, Alertas, Soporte, Panel Responsable, Tecnologías, Gestión de Usuarios).
+8. **Componentes reutilizables**: base de `ui/` (shadcn) y `ui-shared/` para composiciones propias.
 
----
+### ⏳ Funcionalidades Pendientes
 
-## Funcionalidades implementadas
-
-- Estructura base de proyecto React + Vite + TypeScript.
-- Enrutamiento principal con React Router.
-- Protección de rutas con `ProtectedRoute`.
-- Gestión de sesión/token en `AuthContext`.
-- Integración de login con backend mediante Axios (`/auth/login`).
-- Layout principal con navegación lateral y cabecera.
-- Separación por pantallas y componentes reutilizables (`ui`, `ui-shared`).
-
----
-
-## Funcionalidades en desarrollo
-
-- Integración de endpoints reales para módulos funcionales (más allá de auth).
-- Consolidación de manejo de errores y estados de carga en todas las vistas.
-- Normalización de consumo de datos actualmente mockeados.
-- Pruebas automatizadas (unitarias/e2e).
-- Optimización de bundle y estrategia de code splitting.
+1. **Persistencia de sesión**: el token vive solo en memoria (`AuthContext`); al recargar la página (F5) se pierde la sesión. Falta guardar/restaurar desde `localStorage`.
+2. **Variable de entorno para la API**: migrar el `baseURL` hardcodeado en `axiosClient.ts` a `VITE_API_BASE_URL`.
+3. **Sidebar dinámico por rol**: mostrar/ocultar módulos (ej. "Gestión de Usuarios", "Panel Responsable") según el rol real del usuario autenticado, no de forma estática.
+4. **Integración progresiva de endpoints reales**: la mayoría de vistas (`RutaView`, `MicroaprendizajeView`, `AlertasView`, `SoporteView`, etc.) aún consumen datos de `data/datosRegenda.ts` en lugar de la API.
+5. **Gestión de Usuarios conectada**: `GestionUsuarios.tsx` debe consumir el CRUD real (`GET/POST/PUT/DELETE /usuarios`) y el listado de roles (`GET /roles`) del backend.
+6. **Manejo consistente de errores y estados de carga** en todas las vistas.
+7. **Pruebas automatizadas** (unitarias/e2e).
 
 ---
 
-## Roadmap
+## 🗺️ Roadmap Planificado para el Sprint 1
 
 ```mermaid
 gantt
-    title Bit24 Impulsa Frontend - Roadmap académico
+    title Roadmap de Desarrollo - Sprint 1 (Frontend)
     dateFormat  D
     axisFormat Día %d
 
-    section Sprint 1
-    Base del frontend + auth + layout      :active, s1a, 1, 4d
-    Integración inicial de vistas          :s1b, 4, 4d
-    Ajustes de estabilidad                 :s1c, 8, 6d
+    section Inicialización
+    Estructura Base React + Vite + TS   :active, day1, 3d
 
-    section Sprint 2
-    Conexión módulos con API real          :s2a, 15, 7d
-    Estados de error/loading consistentes  :s2b, 19, 6d
+    section Autenticación
+    Login conectado a backend real       :active, day3, 1d
+    Persistencia de sesión (localStorage):  day4, 1d
+    Rutas protegidas + sidebar por rol   :  day4, 1d
 
-    section Sprint 3
-    Testing y hardening técnico            :s3a, 29, 8d
-    Optimización y preparación de demo     :s3b, 34, 6d
+    section Módulos de Negocio
+    Layout principal (AppShell)          :active, day3, 2d
+    Gestión de Usuarios (CRUD real)      :  day5, 2d
+    Integración Ruta/Microaprendizaje    :  day7, 3d
+    Integración Alertas/Soporte          :  day10, 2d
+
+    section Cierre
+    Pulido visual y responsive           :  day12, 2d
+    Pruebas y QA                         :  day13, 1d
+    Cierre de Sprint y Demo              :  day14, 1d
 ```
 
 ---
 
-## Diseño basado en Figma
+## 🎨 Diseño basado en Figma
 
-El frontend se implementa a partir de diseño base en Figma, con adaptación progresiva a componentes React reutilizables.
+El frontend se implementa a partir del diseño base en Figma, con adaptación progresiva a componentes React reutilizables.
 
 - Se mantiene coherencia visual entre pantallas.
 - Se prioriza primero estructura y navegación (Sprint 1), luego integración completa de negocio.
@@ -217,23 +212,20 @@ El frontend se implementa a partir de diseño base en Figma, con adaptación pro
 
 ---
 
-## Convenciones de componentes
+## 📜 Convenciones del Proyecto
 
-- Un componente/pantalla por archivo.
-- Nombres en **PascalCase** para componentes.
-- Uso de `export default` para pantallas y layout principal.
-- Componentes reutilizables en `components/ui` y `components/ui-shared`.
-- Acceso HTTP centralizado en `app/api`.
-- Estado de autenticación centralizado en `app/context/AuthContext.tsx`.
-
----
-
-## Licencia
-
-Proyecto desarrollado con fines académicos para universidad.  
-Uso interno del equipo y contexto educativo.
+* **Componentes**: un componente/pantalla por archivo, nombrado en **PascalCase**.
+* **Exportación**: `export default` para pantallas y layout principal.
+* **Reutilización**: componentes genéricos en `components/ui` (base) y `components/ui-shared` (composiciones propias) — nunca lógica de negocio ahí.
+* **Acceso HTTP**: centralizado exclusivamente en `app/api`, ningún `fetch`/`axios` suelto dentro de páginas o componentes.
+* **Estado de sesión**: centralizado en `app/context/AuthContext.tsx`, ningún otro componente debe leer el token directamente de storage.
+* **Formateo**: Tailwind utility-first, sin CSS-in-JS ni archivos `.css` por componente salvo casos justificados.
 
 ---
 
-Desarrollado bajo marco Scrum · 2026.
-  
+## 📄 Licencia
+
+Proyecto desarrollado con fines académicos para universidad. Uso interno del equipo y contexto educativo.
+
+---
+📄 *Desarrollado bajo el marco ágil de Scrum · 2026.*
