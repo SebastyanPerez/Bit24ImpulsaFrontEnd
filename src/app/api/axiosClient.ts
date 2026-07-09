@@ -1,5 +1,7 @@
 import axios from "axios";
 
+const TOKEN_KEY = "bit24_token";
+
 let authToken: string | null = null;
 
 /**
@@ -11,17 +13,17 @@ export const setClientToken = (token: string | null) => {
 };
 
 const axiosClient = axios.create({
-  baseURL: "http://localhost:8000",
+  baseURL: import.meta.env.VITE_API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Interceptor to inject the Authorization header dynamically if the token exists
 axiosClient.interceptors.request.use(
   (config) => {
-    if (authToken) {
-      config.headers.Authorization = `Bearer ${authToken}`;
+    const token = localStorage.getItem(TOKEN_KEY) ?? authToken;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },

@@ -9,13 +9,17 @@ interface ProtectedRouteProps {
 /**
  * ProtectedRoute component.
  * If the user is authenticated (token exists in AuthContext), it renders the children.
- * Otherwise, it renders the fallback (e.g., the LoginScreen).
+ * Otherwise, it renders the fallback (e.g., redirect to Login).
  */
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   fallback = null,
 }) => {
-  const { token } = useAuth();
+  const { token, isLoading } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
 
   if (!token) {
     return <>{fallback}</>;

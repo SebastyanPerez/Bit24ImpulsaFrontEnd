@@ -1,12 +1,24 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
 import { login as apiLogin, Usuario } from "../api/auth";
 import { setClientToken } from "../api/axiosClient";
+
+const TOKEN_KEY = "bit24_token";
+const USUARIO_KEY = "bit24_usuario";
 
 interface AuthContextType {
   usuario: Usuario | null;
   token: string | null;
+  isLoading: boolean;
   login: (correo: string, password: string) => Promise<void>;
   logout: () => void;
+  restoreSession: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -15,49 +27,59 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+function readStoredSession(): { token: string | null; usuario: Usuario | null } {
+  const storedToken = localStorage.getItem(TOKEN_KEY);
+  const storedUsuario = localStorage.getItem(USUARIO_KEY);
+
+  if (!storedToken || !storedUsuario) {
+    return { token: null, usuario: null };
+  }
+
+  try {
+    const parsedUsuario: Usuario = JSON.parse(storedUsuario);
+    return { token: storedToken, usuario: parsedUsuario };
+  } catch {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USUARIO_KEY);
+    return { token: null, usuario: null };
+  }
+}
+
 /**
  * AuthProvider component that provides authentication state and actions.
  * Persists token and usuario in localStorage (bit24_token, bit24_usuario).
  * Restores state from localStorage on mount so users aren't kicked on reload.
  */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [usuario, setUsuario] = useState<Usuario | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const initialSession = readStoredSession();
+  const [usuario, setUsuario] = useState<Usuario | null>(initialSession.usuario);
+  const [token, setToken] = useState<string | null>(initialSession.token);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Restore session from localStorage on mount
-  useEffect(() => {
-    const storedToken = localStorage.getItem("bit24_token");
-    const storedUsuario = localStorage.getItem("bit24_usuario");
-    if (storedToken && storedUsuario) {
-      try {
-        const parsedUsuario: Usuario = JSON.parse(storedUsuario);
-        setToken(storedToken);
-        setUsuario(parsedUsuario);
-        setClientToken(storedToken);
-      } catch {
-        // Corrupted data — clear it
-        localStorage.removeItem("bit24_token");
-        localStorage.removeItem("bit24_usuario");
-      }
-    }
+  const restoreSession = useCallback((): boolean => {
+    const session = readStoredSession();
+    setToken(session.token);
+    setUsuario(session.usuario);
+    setClientToken(session.token);
+    return session.token !== null;
   }, []);
+
+  useEffect(() => {
+    restoreSession();
+    setIsLoading(false);
+  }, [restoreSession]);
 
   const login = async (correo: string, password: string) => {
     try {
       const response = await apiLogin(correo, password);
 
-      // Update local state (in-memory)
       setUsuario(response.usuario);
       setToken(response.access_token);
-
-      // Update token in Axios request interceptor
       setClientToken(response.access_token);
 
-      // Persist to localStorage
-      localStorage.setItem("bit24_token", response.access_token);
-      localStorage.setItem("bit24_usuario", JSON.stringify(response.usuario));
+      localStorage.setItem(TOKEN_KEY, response.access_token);
+      localStorage.setItem(USUARIO_KEY, JSON.stringify(response.usuario));
     } catch (error) {
-      // Clear credentials on failure
       setUsuario(null);
       setToken(null);
       setClientToken(null);
@@ -66,18 +88,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
-    // Clear credentials
     setUsuario(null);
     setToken(null);
     setClientToken(null);
 
-    // Clear localStorage
-    localStorage.removeItem("bit24_token");
-    localStorage.removeItem("bit24_usuario");
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USUARIO_KEY);
   };
 
   return (
-    <AuthContext.Provider value={{ usuario, token, login, logout }}>
+    <AuthContext.Provider
+      value={{ usuario, token, isLoading, login, logout, restoreSession }}
+    >
       {children}
     </AuthContext.Provider>
   );
