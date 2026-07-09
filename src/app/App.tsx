@@ -6,7 +6,10 @@ import LoginScreen from "./pages/LoginScreen";
 import AppShell from "./components/layout/AppShell";
 
 function LoginRoute() {
-  const { token } = useAuth();
+  const { token, isLoading } = useAuth();
+  if (isLoading) {
+    return null;
+  }
   if (token) {
     return <Navigate to="/" replace />;
   }
