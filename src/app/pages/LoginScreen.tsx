@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Info, Play } from "lucide-react";
+import { Play } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import bit24Logo from "../../imports/bit24_logo.png";
@@ -31,30 +31,33 @@ export default function LoginScreen() {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center p-4"
+      className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden"
       style={{
-        background: `linear-gradient(145deg, ${C.purpleLight} 0%, #ffffff 50%, ${C.tealLight} 100%)`,
+        background: `linear-gradient(145deg, ${C.purpleLight} 0%, #faf8fb 50%, ${C.tealLight} 100%)`,
       }}
     >
-      {/* Demo badge — Gestalt figura-fondo */}
+      {/* Decorative Orbs */}
       <div
-        className="mb-6 flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-full"
+        className="absolute top-[-10%] left-[-10%] w-[320px] sm:w-[450px] h-[320px] sm:h-[450px] rounded-full pointer-events-none opacity-60"
         style={{
-          backgroundColor: C.yellowLight,
-          border: `1px solid ${C.yellow}`,
-          color: "#7a4f00",
-          fontFamily: "var(--font-brand)",
+          background: `radial-gradient(circle, ${C.purple}30 0%, transparent 70%)`,
+          filter: "blur(50px)",
         }}
-      >
-        <Info size={12} /> Piloto REGENDA · Módulo de Adopción Digital
-      </div>
+      />
+      <div
+        className="absolute bottom-[-10%] right-[-10%] w-[320px] sm:w-[450px] h-[320px] sm:h-[450px] rounded-full pointer-events-none opacity-50"
+        style={{
+          background: `radial-gradient(circle, ${C.teal}25 0%, transparent 70%)`,
+          filter: "blur(50px)",
+        }}
+      />
 
       {/* Card login — figura-fondo */}
       <div
-        className="bg-white rounded-3xl w-full max-w-md p-8"
+        className="bg-white/75 backdrop-blur-md rounded-3xl w-full max-w-md p-8 relative z-10"
         style={{
-          boxShadow: `0 20px 60px ${C.purple}20`,
-          border: `1px solid ${C.purple}12`,
+          boxShadow: `0 20px 50px ${C.purple}12`,
+          border: "1px solid rgba(255, 255, 255, 0.45)",
         }}
       >
         {/* Logo */}

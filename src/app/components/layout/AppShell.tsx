@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Headphones,
-  Info,
   Layers,
   LayoutDashboard,
   Map,
@@ -412,17 +411,6 @@ export default function AppShell() {
             />
           </div>
 
-          <div
-            className="hidden sm:flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0"
-            style={{
-              backgroundColor: C.yellowLight,
-              color: "#7a4f00",
-              border: `1px solid ${C.yellow}`,
-              fontFamily: "var(--font-brand)",
-            }}
-          >
-            <Info size={11} /> Demo 20%
-          </div>
 
           <button
             className="relative p-1.5 rounded-xl hover:opacity-80 transition-opacity"

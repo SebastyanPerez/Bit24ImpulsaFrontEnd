@@ -6,7 +6,6 @@ import {
   Headphones,
   RefreshCw,
   Clock,
-  Info,
   Play,
   Sparkles,
 } from "lucide-react";
@@ -86,17 +85,7 @@ export default function DashboardView({ rol }: { rol: RolId }) {
             · REGENDA · 1 julio 2025
           </p>
         </div>
-        <div
-          className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full"
-          style={{
-            backgroundColor: C.yellowLight,
-            border: `1px solid ${C.yellow}`,
-            color: "#7a4f00",
-            fontFamily: "var(--font-brand)",
-          }}
-        >
-          <Info size={11} /> Demo 20% — Datos simulados REGENDA
-        </div>
+
       </div>
 
       {/* KPIs — Gestalt proximidad: grupo de métricas unidas */}
@@ -385,7 +374,7 @@ export default function DashboardView({ rol }: { rol: RolId }) {
               puntos.
             </p>
           </div>
-          <BtnSecondary small onClick={() => {}}>
+          <BtnSecondary small onClick={() => { }}>
             <Play size={12} /> Ir ahora
           </BtnSecondary>
         </div>
