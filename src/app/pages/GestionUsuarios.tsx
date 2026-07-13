@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import axiosClient from "../api/axiosClient";
 import { Plus, Pencil, Power, PowerOff, ShieldAlert } from "lucide-react";
+
+import {
+  getUsuarios,
+  createUsuario,
+  updateUsuario,
+  deleteUsuario,
+  getApiErrorMessage,
+  type Usuario,
+  type UpdateUsuarioPayload,
+} from "../api/usuarios";
+import { getRoles } from "../api/roles";
+import type { Rol } from "../api/auth";
 
 import {
   Table,
@@ -40,22 +51,7 @@ import {
 
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
-
-interface Rol {
-  id: string;
-  nombre: string;
-  descripcion?: string | null;
-}
-
-interface UsuarioBackend {
-  id: string;
-  nombre: string;
-  apellido: string;
-  correo: string;
-  rol_id?: string | null;
-  rol?: Rol | null;
-  estado: boolean;
-}
+import { Switch } from "../components/ui/switch";
 
 interface FormValues {
   nombre: string;
@@ -63,21 +59,21 @@ interface FormValues {
   correo: string;
   password?: string;
   rol_id: string;
+  estado: boolean;
 }
 
 export function GestionUsuarios() {
-  const [usuarios, setUsuarios] = useState<UsuarioBackend[]>([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [roles, setRoles] = useState<Rol[]>([]);
   const [loading, setLoading] = useState(true);
   const [globalError, setGlobalError] = useState<string | null>(null);
-  
-  // Dialog modal states
+
   const [isOpen, setIsOpen] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [actionUserId, setActionUserId] = useState<string | null>(null);
 
-  // react-hook-form setup
   const form = useForm<FormValues>({
     defaultValues: {
       nombre: "",
@@ -85,6 +81,7 @@ export function GestionUsuarios() {
       correo: "",
       password: "",
       rol_id: "",
+      estado: true,
     },
   });
 
@@ -92,11 +89,14 @@ export function GestionUsuarios() {
     try {
       setGlobalError(null);
       setLoading(true);
-      const response = await axiosClient.get<UsuarioBackend[]>("/usuarios");
-      setUsuarios(response.data);
-    } catch (err: any) {
+      const data = await getUsuarios();
+      setUsuarios(data);
+    } catch (err) {
       setGlobalError(
-        err.response?.data?.detail || "Error al cargar la lista de usuarios. Verifica que el backend esté activo."
+        getApiErrorMessage(
+          err,
+          "Error al cargar la lista de usuarios. Verifica que el backend esté activo."
+        )
       );
     } finally {
       setLoading(false);
@@ -105,10 +105,12 @@ export function GestionUsuarios() {
 
   const fetchRoles = async () => {
     try {
-      const response = await axiosClient.get<Rol[]>("/roles");
-      setRoles(response.data);
-    } catch (err: any) {
-      console.error("Error al cargar roles:", err);
+      const data = await getRoles();
+      setRoles(data);
+    } catch (err) {
+      setGlobalError(
+        getApiErrorMessage(err, "Error al cargar los roles del sistema.")
+      );
     }
   };
 
@@ -126,79 +128,109 @@ export function GestionUsuarios() {
       correo: "",
       password: "",
       rol_id: "",
+      estado: true,
     });
     setIsOpen(true);
   };
 
-  const openEditModal = (user: UsuarioBackend) => {
+  const openEditModal = (user: Usuario) => {
     setEditingUserId(user.id);
     setFormError(null);
     form.reset({
       nombre: user.nombre,
       apellido: user.apellido,
       correo: user.correo,
-      password: "", // Contraseña vacía para no modificarla por defecto
       rol_id: user.rol_id || "",
+      estado: user.estado,
+      password: "",
     });
     setIsOpen(true);
   };
 
   const handleDeactivate = async (userId: string) => {
-    if (!window.confirm("¿Estás seguro de que deseas desactivar a este usuario?")) {
+    if (
+      !window.confirm("¿Estás seguro de que deseas desactivar a este usuario?")
+    ) {
       return;
     }
+
     try {
       setGlobalError(null);
-      await axiosClient.delete(`/usuarios/${userId}`);
+      setActionUserId(userId);
+      await deleteUsuario(userId);
       await fetchUsuarios();
-    } catch (err: any) {
-      setGlobalError(
-        err.response?.data?.detail || "Error al desactivar el usuario."
-      );
+    } catch (err) {
+      setGlobalError(getApiErrorMessage(err, "Error al desactivar el usuario."));
+    } finally {
+      setActionUserId(null);
+    }
+  };
+
+  const handleReactivate = async (user: Usuario) => {
+    if (!window.confirm("¿Deseas reactivar este usuario?")) {
+      return;
+    }
+
+    try {
+      setGlobalError(null);
+      setActionUserId(user.id);
+      await updateUsuario(user.id, {
+        nombre: user.nombre,
+        apellido: user.apellido,
+        correo: user.correo,
+        rol_id: user.rol_id || null,
+        estado: true,
+      });
+      await fetchUsuarios();
+    } catch (err) {
+      setGlobalError(getApiErrorMessage(err, "Error al reactivar el usuario."));
+    } finally {
+      setActionUserId(null);
     }
   };
 
   const onSubmit = async (values: FormValues) => {
     setFormError(null);
     setSubmitting(true);
+
     try {
       if (editingUserId) {
-        // En edición, omitimos password si está vacío
-        const payload: any = {
+        const payload: UpdateUsuarioPayload = {
           nombre: values.nombre,
           apellido: values.apellido,
           correo: values.correo,
           rol_id: values.rol_id || null,
+          estado: values.estado,
         };
         if (values.password && values.password.trim() !== "") {
           payload.password = values.password;
         }
-
-        await axiosClient.put(`/usuarios/${editingUserId}`, payload);
+        await updateUsuario(editingUserId, payload);
       } else {
-        // Al crear, la contraseña es obligatoria
         if (!values.password || values.password.trim() === "") {
           setFormError("La contraseña es requerida para nuevos usuarios.");
           setSubmitting(false);
           return;
         }
 
-        const payload = {
+        await createUsuario({
           nombre: values.nombre,
           apellido: values.apellido,
           correo: values.correo,
           password: values.password,
           rol_id: values.rol_id || null,
-        };
-
-        await axiosClient.post("/usuarios", payload);
+          estado: values.estado,
+        });
       }
-      
+
       setIsOpen(false);
       await fetchUsuarios();
-    } catch (err: any) {
+    } catch (err) {
       setFormError(
-        err.response?.data?.detail || "Ocurrió un error al guardar el usuario. Verifica los campos."
+        getApiErrorMessage(
+          err,
+          "Ocurrió un error al guardar el usuario. Verifica los campos."
+        )
       );
     } finally {
       setSubmitting(false);
@@ -207,14 +239,20 @@ export function GestionUsuarios() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: "#5D1451", fontFamily: "var(--font-brand)" }}>
+          <h1
+            className="text-2xl font-extrabold tracking-tight"
+            style={{ color: "#5D1451", fontFamily: "var(--font-brand)" }}
+          >
             Gestión de Usuarios
           </h1>
-          <p className="text-sm mt-1" style={{ color: "#666666", fontFamily: "var(--font-body)" }}>
-            Registra, edita y administra los accesos y roles de los usuarios del sistema piloto REGENDA.
+          <p
+            className="text-sm mt-1"
+            style={{ color: "#666666", fontFamily: "var(--font-body)" }}
+          >
+            Registra, edita y administra los accesos y roles de los usuarios del
+            sistema piloto REGENDA.
           </p>
         </div>
         <Button
@@ -230,22 +268,30 @@ export function GestionUsuarios() {
         </Button>
       </div>
 
-      {/* Error alert banner */}
       {globalError && (
-        <div className="p-4 rounded-xl text-sm flex items-center gap-2" style={{ backgroundColor: "#fdecea", color: "#e34038", border: "1px solid rgba(227, 64, 56, 0.2)" }}>
+        <div
+          className="p-4 rounded-xl text-sm flex items-center gap-2"
+          style={{
+            backgroundColor: "#fdecea",
+            color: "#e34038",
+            border: "1px solid rgba(227, 64, 56, 0.2)",
+          }}
+        >
           <ShieldAlert className="size-4 flex-shrink-0" />
           <span>{globalError}</span>
         </div>
       )}
 
-      {/* Users table */}
       <div
         className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
         style={{ boxShadow: "0 4px 15px rgba(93, 20, 81, 0.03)" }}
       >
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <p className="text-sm font-semibold animate-pulse" style={{ color: "#666666", fontFamily: "var(--font-body)" }}>
+            <p
+              className="text-sm font-semibold animate-pulse"
+              style={{ color: "#666666", fontFamily: "var(--font-body)" }}
+            >
               Cargando usuarios...
             </p>
           </div>
@@ -253,20 +299,54 @@ export function GestionUsuarios() {
           <Table>
             <TableHeader className="bg-slate-50/50">
               <TableRow>
-                <TableHead className="font-bold py-3" style={{ color: "#5D1451", fontFamily: "var(--font-brand)" }}>Nombre Completo</TableHead>
-                <TableHead className="font-bold py-3" style={{ color: "#5D1451", fontFamily: "var(--font-brand)" }}>Correo electrónico</TableHead>
-                <TableHead className="font-bold py-3" style={{ color: "#5D1451", fontFamily: "var(--font-brand)" }}>Rol del Sistema</TableHead>
-                <TableHead className="font-bold py-3" style={{ color: "#5D1451", fontFamily: "var(--font-brand)" }}>Estado</TableHead>
-                <TableHead className="font-bold py-3 text-right" style={{ color: "#5D1451", fontFamily: "var(--font-brand)" }}>Acciones</TableHead>
+                <TableHead
+                  className="font-bold py-3"
+                  style={{ color: "#5D1451", fontFamily: "var(--font-brand)" }}
+                >
+                  Nombre Completo
+                </TableHead>
+                <TableHead
+                  className="font-bold py-3"
+                  style={{ color: "#5D1451", fontFamily: "var(--font-brand)" }}
+                >
+                  Correo electrónico
+                </TableHead>
+                <TableHead
+                  className="font-bold py-3"
+                  style={{ color: "#5D1451", fontFamily: "var(--font-brand)" }}
+                >
+                  Rol del Sistema
+                </TableHead>
+                <TableHead
+                  className="font-bold py-3"
+                  style={{ color: "#5D1451", fontFamily: "var(--font-brand)" }}
+                >
+                  Estado
+                </TableHead>
+                <TableHead
+                  className="font-bold py-3 text-right"
+                  style={{ color: "#5D1451", fontFamily: "var(--font-brand)" }}
+                >
+                  Acciones
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {usuarios.map((user) => (
-                <TableRow key={user.id} className="hover:bg-slate-50/40 transition-colors">
-                  <TableCell className="py-4 font-semibold text-slate-800" style={{ fontFamily: "var(--font-brand)" }}>
+                <TableRow
+                  key={user.id}
+                  className="hover:bg-slate-50/40 transition-colors"
+                >
+                  <TableCell
+                    className="py-4 font-semibold text-slate-800"
+                    style={{ fontFamily: "var(--font-brand)" }}
+                  >
                     {user.nombre} {user.apellido}
                   </TableCell>
-                  <TableCell className="py-4 text-slate-600" style={{ fontFamily: "var(--font-body)" }}>
+                  <TableCell
+                    className="py-4 text-slate-600"
+                    style={{ fontFamily: "var(--font-body)" }}
+                  >
                     {user.correo}
                   </TableCell>
                   <TableCell className="py-4">
@@ -304,27 +384,40 @@ export function GestionUsuarios() {
                       >
                         <Pencil className="size-3.5 text-slate-500" />
                       </Button>
-                      <Button
-                        onClick={() => handleDeactivate(user.id)}
-                        disabled={!user.estado}
-                        variant="outline"
-                        size="sm"
-                        className="rounded-lg border-red-100 hover:bg-red-50/30 hover:border-red-200"
-                        title={user.estado ? "Desactivar usuario" : "Usuario ya inactivo"}
-                      >
-                        {user.estado ? (
+                      {user.estado ? (
+                        <Button
+                          onClick={() => handleDeactivate(user.id)}
+                          disabled={actionUserId === user.id}
+                          variant="outline"
+                          size="sm"
+                          className="rounded-lg border-red-100 hover:bg-red-50/30 hover:border-red-200"
+                          title="Desactivar usuario"
+                        >
                           <Power className="size-3.5 text-red-500" />
-                        ) : (
-                          <PowerOff className="size-3.5 text-slate-400" />
-                        )}
-                      </Button>
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => handleReactivate(user)}
+                          disabled={actionUserId === user.id}
+                          variant="outline"
+                          size="sm"
+                          className="rounded-lg border-teal-100 hover:bg-teal-50/30 hover:border-teal-200"
+                          title="Reactivar usuario"
+                        >
+                          <PowerOff className="size-3.5 text-teal-600" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
               {usuarios.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-12 text-slate-400" style={{ fontFamily: "var(--font-body)" }}>
+                  <TableCell
+                    colSpan={5}
+                    className="text-center py-12 text-slate-400"
+                    style={{ fontFamily: "var(--font-body)" }}
+                  >
                     No se encontraron usuarios registrados en la base de datos.
                   </TableCell>
                 </TableRow>
@@ -334,22 +427,30 @@ export function GestionUsuarios() {
         )}
       </div>
 
-      {/* Dialog for Create/Edit Form */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-md rounded-2xl border-purple-50">
           <DialogHeader>
-            <DialogTitle style={{ color: "#5D1451", fontFamily: "var(--font-brand)" }}>
+            <DialogTitle
+              style={{ color: "#5D1451", fontFamily: "var(--font-brand)" }}
+            >
               {editingUserId ? "Editar Usuario" : "Registrar Nuevo Usuario"}
             </DialogTitle>
             <DialogDescription style={{ fontFamily: "var(--font-body)" }}>
               {editingUserId
-                ? "Modifica los datos del usuario. Deja la contraseña en blanco si no deseas cambiarla."
+                ? "Modifica los datos del usuario. La contraseña no se puede cambiar desde esta pantalla."
                 : "Ingresa los datos correspondientes para registrar un nuevo usuario en la plataforma."}
             </DialogDescription>
           </DialogHeader>
 
           {formError && (
-            <div className="p-3 rounded-lg text-xs" style={{ backgroundColor: "#fdecea", color: "#e34038", border: "1px solid rgba(227, 64, 56, 0.2)" }}>
+            <div
+              className="p-3 rounded-lg text-xs"
+              style={{
+                backgroundColor: "#fdecea",
+                color: "#e34038",
+                border: "1px solid rgba(227, 64, 56, 0.2)",
+              }}
+            >
               {formError}
             </div>
           )}
@@ -363,9 +464,21 @@ export function GestionUsuarios() {
                   rules={{ required: "El nombre es requerido" }}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel style={{ color: "#5D1451", fontFamily: "var(--font-brand)", fontWeight: "bold" }}>Nombre</FormLabel>
+                      <FormLabel
+                        style={{
+                          color: "#5D1451",
+                          fontFamily: "var(--font-brand)",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        Nombre
+                      </FormLabel>
                       <FormControl>
-                        <Input placeholder="Ej. Juan" {...field} className="rounded-xl" />
+                        <Input
+                          placeholder="Ej. Juan"
+                          {...field}
+                          className="rounded-xl"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -378,9 +491,21 @@ export function GestionUsuarios() {
                   rules={{ required: "El apellido es requerido" }}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel style={{ color: "#5D1451", fontFamily: "var(--font-brand)", fontWeight: "bold" }}>Apellido</FormLabel>
+                      <FormLabel
+                        style={{
+                          color: "#5D1451",
+                          fontFamily: "var(--font-brand)",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        Apellido
+                      </FormLabel>
                       <FormControl>
-                        <Input placeholder="Ej. Pérez" {...field} className="rounded-xl" />
+                        <Input
+                          placeholder="Ej. Pérez"
+                          {...field}
+                          className="rounded-xl"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -400,9 +525,22 @@ export function GestionUsuarios() {
                 }}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel style={{ color: "#5D1451", fontFamily: "var(--font-brand)", fontWeight: "bold" }}>Correo electrónico</FormLabel>
+                    <FormLabel
+                      style={{
+                        color: "#5D1451",
+                        fontFamily: "var(--font-brand)",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      Correo electrónico
+                    </FormLabel>
                     <FormControl>
-                      <Input placeholder="juan.perez@example.com" type="email" {...field} className="rounded-xl" />
+                      <Input
+                        placeholder="juan.perez@example.com"
+                        type="email"
+                        {...field}
+                        className="rounded-xl"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -412,21 +550,46 @@ export function GestionUsuarios() {
               <FormField
                 control={form.control}
                 name="password"
-                rules={{
-                  required: editingUserId ? false : "La contraseña es requerida para nuevos usuarios",
-                  minLength: {
-                    value: 6,
-                    message: "La contraseña debe tener al menos 6 caracteres",
-                  },
-                }}
+                rules={
+                  editingUserId
+                    ? {
+                      minLength: {
+                        value: 6,
+                        message: "La contraseña debe tener al menos 6 caracteres",
+                      },
+                    }
+                    : {
+                      required: "La contraseña es requerida para nuevos usuarios",
+                      minLength: {
+                        value: 6,
+                        message: "La contraseña debe tener al menos 6 caracteres",
+                      },
+                    }
+                }
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel style={{ color: "#5D1451", fontFamily: "var(--font-brand)", fontWeight: "bold" }}>
-                      Contraseña {editingUserId && "(Opcional)"}
+                    <FormLabel
+                      style={{
+                        color: "#5D1451",
+                        fontFamily: "var(--font-brand)",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {editingUserId ? "Nueva contraseña (opcional)" : "Contraseña"}
                     </FormLabel>
                     <FormControl>
-                      <Input placeholder={editingUserId ? "Dejar en blanco si no se cambia" : "Mínimo 6 caracteres"} type="password" {...field} className="rounded-xl" />
+                      <Input
+                        placeholder={editingUserId ? "Dejar en blanco para mantener la actual" : "Mínimo 6 caracteres"}
+                        type="password"
+                        {...field}
+                        className="rounded-xl"
+                      />
                     </FormControl>
+                    {editingUserId && (
+                      <p className="text-xs text-slate-500 mt-1 font-medium" style={{ fontFamily: "var(--font-body)" }}>
+                        Dejar en blanco para no cambiar la contraseña.
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -438,7 +601,15 @@ export function GestionUsuarios() {
                 rules={{ required: "Debes seleccionar un rol" }}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel style={{ color: "#5D1451", fontFamily: "var(--font-brand)", fontWeight: "bold" }}>Rol del sistema</FormLabel>
+                    <FormLabel
+                      style={{
+                        color: "#5D1451",
+                        fontFamily: "var(--font-brand)",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      Rol del sistema
+                    </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="rounded-xl">
@@ -454,6 +625,41 @@ export function GestionUsuarios() {
                       </SelectContent>
                     </Select>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="estado"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3">
+                    <div className="space-y-0.5">
+                      <FormLabel
+                        style={{
+                          color: "#5D1451",
+                          fontFamily: "var(--font-brand)",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        Estado
+                      </FormLabel>
+                      <p
+                        className="text-xs"
+                        style={{
+                          color: "#666666",
+                          fontFamily: "var(--font-body)",
+                        }}
+                      >
+                        {field.value ? "Usuario activo" : "Usuario inactivo"}
+                      </p>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
                   </FormItem>
                 )}
               />

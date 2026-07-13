@@ -142,11 +142,11 @@ npm run build
 
 ## 📊 Estado Actual del Sprint 1
 
-* **Duración**: 2 semanas (Sprint en curso - Día 3-4).
-* **Progreso general**: ~20% de avance estimado.
+* **Duración**: 2 semanas (Incrementos de desarrollo finalizados).
+* **Progreso general**: ~90% de avance estimado.
 
 ```text
-[████░░░░░░░░░░░░░░░░] 20% Completado
+[██████████████████░░] 90% Completado
 ```
 
 ### ✅ Funcionalidades Implementadas
@@ -154,21 +154,19 @@ npm run build
 1. **Base técnica del proyecto**: React + Vite + TypeScript + Tailwind configurados y funcionando.
 2. **Enrutamiento**: React Router con árbol de rutas centralizado en `App.tsx`.
 3. **Autenticación real**: `LoginScreen` conectado a `POST /auth/login` del backend vía Axios.
-4. **Sesión**: `AuthContext` gestiona token y usuario autenticado.
-5. **Protección de rutas**: `ProtectedRoute` bloquea acceso a vistas internas sin sesión activa.
-6. **Layout principal**: `AppShell` modular con sidebar y navbar, desacoplado de las pantallas de negocio.
-7. **Separación por pantallas**: un archivo por vista de negocio (Dashboard, Ruta, Microaprendizaje, IA, Alertas, Soporte, Panel Responsable, Tecnologías, Gestión de Usuarios).
-8. **Componentes reutilizables**: base de `ui/` (shadcn) y `ui-shared/` para composiciones propias.
+4. **Persistencia de sesión**: El token y los datos de usuario se persisten en `localStorage` (`bit24_token` y `bit24_usuario`), restaurándose automáticamente en `AuthContext` al recargar la página.
+5. **Base URL Dinámica**: Configuración de `VITE_API_BASE_URL` en el cliente HTTP (`axiosClient.ts`) mediante variables de entorno `.env`.
+6. **Control de Acceso y Sidebar por Rol**: Panels administrativos restringidos de forma segura al rol `Administrador` tanto en el menú lateral como en el enrutamiento.
+7. **Módulo de Gestión de Contenido (`GestionContenido.tsx`)**: Panel de control administrativo con CRUD de 3 niveles jerárquicos (Rutas, Tareas, Guías) totalmente integrado con la base de datos real.
+8. **Gestión de Usuarios (`GestionUsuarios.tsx`)**: CRUD de usuarios completado, añadiendo soporte para restablecimiento opcional y seguro de contraseñas.
+9. **Serialización y Rehidratación JSON**: Pasos, orden de visualización y categoría de las guías se guardan y leen automáticamente desde el campo de texto `contenido` del modelo de la base de datos para alineación con las restricciones del esquema backend.
+10. **Validación Numérica de Duración**: El input del modal de guías fue validado a nivel de cliente para permitir únicamente valores numéricos (`type="number"`), evitando errores de parseo o de integridad al guardar.
 
 ### ⏳ Funcionalidades Pendientes
 
-1. **Persistencia de sesión**: el token vive solo en memoria (`AuthContext`); al recargar la página (F5) se pierde la sesión. Falta guardar/restaurar desde `localStorage`.
-2. **Variable de entorno para la API**: migrar el `baseURL` hardcodeado en `axiosClient.ts` a `VITE_API_BASE_URL`.
-3. **Sidebar dinámico por rol**: mostrar/ocultar módulos (ej. "Gestión de Usuarios", "Panel Responsable") según el rol real del usuario autenticado, no de forma estática.
-4. **Integración progresiva de endpoints reales**: la mayoría de vistas (`RutaView`, `MicroaprendizajeView`, `AlertasView`, `SoporteView`, etc.) aún consumen datos de `data/datosRegenda.ts` en lugar de la API.
-5. **Gestión de Usuarios conectada**: `GestionUsuarios.tsx` debe consumir el CRUD real (`GET/POST/PUT/DELETE /usuarios`) y el listado de roles (`GET /roles`) del backend.
-6. **Manejo consistente de errores y estados de carga** en todas las vistas.
-7. **Pruebas automatizadas** (unitarias/e2e).
+1. **Integración progresiva de endpoints secundarios**: Conectar las vistas de soporte, alertas e IA (que siguen consumiendo mocks locales o de API no transaccional).
+2. **Manejo consistente de errores**: Seguir puliendo la integración de notificaciones visuales ante errores de red o sesión caída en vistas de menor relevancia.
+3. **Pruebas automatizadas** (unitarias/e2e).
 
 ---
 

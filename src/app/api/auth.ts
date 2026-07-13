@@ -13,6 +13,7 @@ export interface Usuario {
   correo: string;
   rol_id?: string | null;
   rol?: Rol | null;
+  estado?: boolean;
 }
 
 export interface LoginResponse {

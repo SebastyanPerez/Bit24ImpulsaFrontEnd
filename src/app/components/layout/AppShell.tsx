@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Headphones,
-  Info,
   Layers,
   LayoutDashboard,
   Map,
@@ -14,6 +13,7 @@ import {
   MessageSquare,
   Search,
   Shield,
+  Sliders,
   Users,
   Zap,
 } from "lucide-react";
@@ -37,6 +37,7 @@ import PanelResponsableView from "../../pages/PanelResponsableView";
 import TecnologiasView from "../../pages/TecnologiasView";
 import LoginScreen from "../../pages/LoginScreen";
 import { GestionUsuarios } from "../../pages/GestionUsuarios";
+import GestionContenido from "../../pages/GestionContenido";
 
 interface NavItem {
   id: NavId;
@@ -86,6 +87,11 @@ const navItems: NavItem[] = [
     label: "Gestión de Usuarios",
     icon: <Users size={17} />,
   },
+  {
+    id: "contenido",
+    label: "Gestión de Contenido",
+    icon: <Sliders size={17} />,
+  },
 ];
 
 export default function AppShell() {
@@ -108,9 +114,9 @@ export default function AppShell() {
     const roleName = usuario?.rol?.nombre || "";
     switch (active) {
       case "dashboard":
-        return <DashboardView rol={rol} />;
+        return <DashboardView rol={rol!} />;
       case "ruta":
-        return <RutaView rol={rol} />;
+        return <RutaView rol={rol!} />;
       case "microaprendizaje":
         return <MicroaprendizajeView />;
       case "ia":
@@ -121,18 +127,23 @@ export default function AppShell() {
         return <SoporteView />;
       case "responsable":
         if (roleName !== "Responsable Interno" && roleName !== "Administrador") {
-          return <DashboardView rol={rol} />;
+          return <DashboardView rol={rol!} />;
         }
         return <PanelResponsableView />;
       case "tecnologias":
         return <TecnologiasView />;
       case "usuarios":
         if (roleName !== "Administrador") {
-          return <DashboardView rol={rol} />;
+          return <DashboardView rol={rol!} />;
         }
         return <GestionUsuarios />;
+      case "contenido":
+        if (roleName !== "Administrador") {
+          return <DashboardView rol={rol!} />;
+        }
+        return <GestionContenido />;
       default:
-        return <DashboardView rol={rol} />;
+        return <DashboardView rol={rol!} />;
     }
   }
 
@@ -192,7 +203,7 @@ export default function AppShell() {
             if (item.id === "responsable") {
               return roleName === "Responsable Interno" || roleName === "Administrador";
             }
-            if (item.id === "usuarios") {
+            if (item.id === "usuarios" || item.id === "contenido") {
               return roleName === "Administrador";
             }
             return true;
@@ -400,17 +411,6 @@ export default function AppShell() {
             />
           </div>
 
-          <div
-            className="hidden sm:flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0"
-            style={{
-              backgroundColor: C.yellowLight,
-              color: "#7a4f00",
-              border: `1px solid ${C.yellow}`,
-              fontFamily: "var(--font-brand)",
-            }}
-          >
-            <Info size={11} /> Demo 20%
-          </div>
 
           <button
             className="relative p-1.5 rounded-xl hover:opacity-80 transition-opacity"
