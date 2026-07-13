@@ -15,15 +15,22 @@ export interface UpdateTareaPayload {
     estado?: boolean;
 }
 
+export interface ContenidoGuia {
+    categoria: string;
+    orden: number;
+    pasos: string[];
+}
+
 export interface Guia {
     id: string;
     tarea_id: string;
     titulo: string;
-    contenido?: string | null;
+    /** El backend devuelve este campo como JSON string; el frontend lo parsea al recibirlo */
+    contenido?: ContenidoGuia | string | null;
     video_url?: string | null;
     duracion?: number | string | null;
     estado: boolean;
-    // Rehydrated / frontend compatibility fields
+    // Campos rehydrated después de parsear contenido
     categoria?: string;
     orden?: number;
     pasos?: string[];

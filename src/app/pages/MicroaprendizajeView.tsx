@@ -31,13 +31,26 @@ export default function MicroaprendizajeView() {
         const data = await getGuias();
         const mapped = data.map((g): UIGuia => {
           const storedLearned = localStorage.getItem(`lesson_learned_${usuario?.id || "anon"}_${g.id}`);
-          let parsed = { categoria: "General", pasos: [] as string[] };
+          let parsed: { categoria: string; pasos: string[] } = { categoria: "General", pasos: [] as string[] };
           try {
             if (g.contenido) {
-              parsed = JSON.parse(g.contenido);
+              if (typeof g.contenido === "object") {
+                // Ya viene parseado como ContenidoGuia
+                parsed = {
+                  categoria: g.contenido.categoria || "General",
+                  pasos: Array.isArray(g.contenido.pasos) ? g.contenido.pasos : [],
+                };
+              } else {
+                // Es un JSON string, lo parseamos
+                const obj = JSON.parse(g.contenido as string);
+                parsed = {
+                  categoria: obj.categoria || "General",
+                  pasos: Array.isArray(obj.pasos) ? obj.pasos : [],
+                };
+              }
             }
           } catch (e) {
-            parsed = { categoria: "", pasos: g.contenido ? [g.contenido] : [] };
+            parsed = { categoria: "", pasos: g.contenido ? [g.contenido as string] : [] };
           }
           return {
             ...g,
@@ -263,7 +276,7 @@ export default function MicroaprendizajeView() {
                         Pasos del proceso
                       </p>
                       <ol className="flex flex-col gap-2">
-                        {(lesson.pasos || []).map((step: string, i: number) => (
+                        {(lesson.steps || []).map((step: string, i: number) => (
                           <li
                             key={i}
                             className="flex gap-2 text-xs"

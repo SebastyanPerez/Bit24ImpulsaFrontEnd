@@ -136,7 +136,33 @@ export default function GestionContenido() {
             setGuiasLoading(true);
             setGuiasError(null);
             const res = await getGuiasByTarea(tareaId);
-            setGuias(res);
+            // Parsear el campo `contenido` (JSON string) para rehydratar categoria, orden y pasos
+            const parsed = res.map(g => {
+                let categoria = g.categoria || "General";
+                let orden = g.orden || 1;
+                let pasos = g.pasos || [];
+                if (g.contenido && typeof g.contenido === "string") {
+                    try {
+                        const obj = JSON.parse(g.contenido);
+                        if (obj && typeof obj === "object") {
+                            categoria = obj.categoria || categoria;
+                            orden = typeof obj.orden === "number" ? obj.orden : orden;
+                            pasos = Array.isArray(obj.pasos) ? obj.pasos : pasos;
+                        }
+                    } catch {
+                        // Si no parsea, lo usamos como primer paso
+                        pasos = [g.contenido as string];
+                    }
+                } else if (g.contenido && typeof g.contenido === "object") {
+                    // Ya viene parseado como objeto
+                    const obj = g.contenido as { categoria?: string; orden?: number; pasos?: string[] };
+                    categoria = obj.categoria || categoria;
+                    orden = typeof obj.orden === "number" ? obj.orden : orden;
+                    pasos = Array.isArray(obj.pasos) ? obj.pasos : pasos;
+                }
+                return { ...g, categoria, orden, pasos };
+            });
+            setGuias(parsed);
         } catch (err) {
             setGuiasError(getApiErrorMessage(err, "Error al cargar las guías."));
         } finally {

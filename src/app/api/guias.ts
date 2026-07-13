@@ -1,7 +1,7 @@
 import axiosClient from "./axiosClient";
-import type { Guia } from "./tareas";
+import type { Guia, ContenidoGuia } from "./tareas";
 
-export type { Guia };
+export type { Guia, ContenidoGuia };
 
 export interface CreateGuiaPayload {
     tarea_id: string;
