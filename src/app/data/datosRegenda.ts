@@ -32,7 +32,8 @@ export type NavId =
   | "soporte"
   | "responsable"
   | "tecnologias"
-  | "usuarios";
+  | "usuarios"
+  | "contenido";
 
 export interface TaskItem {
   id: number;
@@ -483,4 +484,5 @@ export const navLabels: Record<NavId, string> = {
   responsable: "Panel del Responsable",
   tecnologias: "Tecnologías aplicadas",
   usuarios: "Gestión de Usuarios",
+  contenido: "Gestión de Contenido",
 };

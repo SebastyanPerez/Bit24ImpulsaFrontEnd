@@ -52,9 +52,15 @@ function readStoredSession(): { token: string | null; usuario: Usuario | null } 
  */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const initialSession = readStoredSession();
+
+  // Set client token synchronously during initialization so first render API calls are authorized
+  if (initialSession.token) {
+    setClientToken(initialSession.token);
+  }
+
   const [usuario, setUsuario] = useState<Usuario | null>(initialSession.usuario);
   const [token, setToken] = useState<string | null>(initialSession.token);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const restoreSession = useCallback((): boolean => {
     const session = readStoredSession();
@@ -66,7 +72,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     restoreSession();
-    setIsLoading(false);
   }, [restoreSession]);
 
   const login = async (correo: string, password: string) => {

@@ -1,19 +1,20 @@
 import React from "react";
+import { Navigate, Outlet } from "react-router";
 import { useAuth } from "../context/AuthContext";
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   fallback?: React.ReactNode;
 }
 
 /**
  * ProtectedRoute component.
- * If the user is authenticated (token exists in AuthContext), it renders the children.
- * Otherwise, it renders the fallback (e.g., redirect to Login).
+ * If the user is authenticated (token exists in AuthContext), it renders the children (or outlet).
+ * Otherwise, it renders the fallback or navigates to /login.
  */
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
-  fallback = null,
+  fallback,
 }) => {
   const { token, isLoading } = useAuth();
 
@@ -22,8 +23,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (!token) {
-    return <>{fallback}</>;
+    return <>{fallback || <Navigate to="/login" replace />}</>;
   }
 
-  return <>{children}</>;
+  return children ? <>{children}</> : <Outlet />;
 };

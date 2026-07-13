@@ -26,6 +26,7 @@ export interface UpdateUsuarioPayload {
   correo: string;
   rol_id: string | null;
   estado: boolean;
+  password?: string;
 }
 
 /**

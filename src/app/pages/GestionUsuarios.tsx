@@ -9,6 +9,7 @@ import {
   deleteUsuario,
   getApiErrorMessage,
   type Usuario,
+  type UpdateUsuarioPayload,
 } from "../api/usuarios";
 import { getRoles } from "../api/roles";
 import type { Rol } from "../api/auth";
@@ -141,6 +142,7 @@ export function GestionUsuarios() {
       correo: user.correo,
       rol_id: user.rol_id || "",
       estado: user.estado,
+      password: "",
     });
     setIsOpen(true);
   };
@@ -193,13 +195,17 @@ export function GestionUsuarios() {
 
     try {
       if (editingUserId) {
-        await updateUsuario(editingUserId, {
+        const payload: UpdateUsuarioPayload = {
           nombre: values.nombre,
           apellido: values.apellido,
           correo: values.correo,
           rol_id: values.rol_id || null,
           estado: values.estado,
-        });
+        };
+        if (values.password && values.password.trim() !== "") {
+          payload.password = values.password;
+        }
+        await updateUsuario(editingUserId, payload);
       } else {
         if (!values.password || values.password.trim() === "") {
           setFormError("La contraseña es requerida para nuevos usuarios.");
@@ -541,41 +547,53 @@ export function GestionUsuarios() {
                 )}
               />
 
-              {!editingUserId && (
-                <FormField
-                  control={form.control}
-                  name="password"
-                  rules={{
-                    required: "La contraseña es requerida para nuevos usuarios",
-                    minLength: {
-                      value: 6,
-                      message: "La contraseña debe tener al menos 6 caracteres",
-                    },
-                  }}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel
-                        style={{
-                          color: "#5D1451",
-                          fontFamily: "var(--font-brand)",
-                          fontWeight: "bold",
-                        }}
-                      >
-                        Contraseña
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Mínimo 6 caracteres"
-                          type="password"
-                          {...field}
-                          className="rounded-xl"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
+              <FormField
+                control={form.control}
+                name="password"
+                rules={
+                  editingUserId
+                    ? {
+                      minLength: {
+                        value: 6,
+                        message: "La contraseña debe tener al menos 6 caracteres",
+                      },
+                    }
+                    : {
+                      required: "La contraseña es requerida para nuevos usuarios",
+                      minLength: {
+                        value: 6,
+                        message: "La contraseña debe tener al menos 6 caracteres",
+                      },
+                    }
+                }
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel
+                      style={{
+                        color: "#5D1451",
+                        fontFamily: "var(--font-brand)",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {editingUserId ? "Nueva contraseña (opcional)" : "Contraseña"}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder={editingUserId ? "Dejar en blanco para mantener la actual" : "Mínimo 6 caracteres"}
+                        type="password"
+                        {...field}
+                        className="rounded-xl"
+                      />
+                    </FormControl>
+                    {editingUserId && (
+                      <p className="text-xs text-slate-500 mt-1 font-medium" style={{ fontFamily: "var(--font-body)" }}>
+                        Dejar en blanco para no cambiar la contraseña.
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}
