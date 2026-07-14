@@ -65,7 +65,7 @@ export default function RutaView({ rol }: { rol: RolId }) {
   const completed = tasks.filter((t) => t.status === "completado").length;
   const progress = tasks.length > 0 ? Math.round((completed / tasks.length) * 100) : 0;
 
-  function advance(id: number) {
+  function advance(id: string) {
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id !== id) return t;
