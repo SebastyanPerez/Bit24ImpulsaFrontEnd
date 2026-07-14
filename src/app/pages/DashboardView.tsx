@@ -1,4 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getProgresoResumen, getMiProgreso } from "../api/progreso";
+import {
+  C,
+  RolId,
+  roleConfig,
+  areaStats,
+  adoptionTrend,
+  whatsappAlerts,
+} from "../data/datosRegenda";
+import {
+  KPICard,
+  ProgressBar,
+  StatusBadge,
+  BtnSecondary,
+} from "../components/ui-shared/DesignSystem";
 import {
   TrendingUp,
   CheckCircle2,
@@ -19,34 +34,89 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { useAuth } from "../context/AuthContext";
-import {
-  C,
-  RolId,
-  roleConfig,
-  areaStats,
-  adoptionTrend,
-  whatsappAlerts,
-} from "../data/datosRegenda";
-import {
-  KPICard,
-  ProgressBar,
-  StatusBadge,
-  BtnSecondary,
-} from "../components/ui-shared/DesignSystem";
 
 // ─── MÓDULO 2: Dashboard post-login ───────────────────────────────────────────
 export default function DashboardView({ rol }: { rol: RolId }) {
   const { usuario } = useAuth();
+  const [stats, setStats] = useState(areaStats);
+  const [personalProgress, setPersonalProgress] = useState<{
+    porcentaje_adopcion: number;
+    tareas_completadas: number;
+    tareas_pendientes: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const isManager = rol === "responsable" || rol === "administracion";
+
+    if (isManager) {
+      getProgresoResumen()
+        .then((resumen) => {
+          if (Array.isArray(resumen)) {
+            // Actualizar tabla "Avance por área"
+            setStats((prev) =>
+              prev.map((a) => {
+                const matched = resumen.find(
+                  (r) =>
+                    r.rol_nombre.toLowerCase() === a.area.toLowerCase() ||
+                    (a.area === "Almacén" && r.rol_nombre === "Almacén")
+                );
+                if (matched) {
+                  return {
+                    ...a,
+                    progress: matched.porcentaje_adopcion,
+                  };
+                }
+                return a;
+              })
+            );
+
+            // Calcular porcentajes agregados para las KPIs superiores de la vista Admin/Responsable
+            const totalAreas = resumen.length || 1;
+            const avgAdopcion = resumen.reduce((acc, curr) => acc + (curr.porcentaje_adopcion || 0), 0) / totalAreas;
+            const totalCompletadas = resumen.reduce((acc, curr) => acc + (curr.tareas_completadas || 0), 0);
+            const totalActivas = resumen.reduce((acc, curr) => acc + (curr.tareas_activas || 0), 0);
+            const totalPendientes = Math.max(0, totalActivas - totalCompletadas);
+
+            setPersonalProgress({
+              porcentaje_adopcion: Math.round(avgAdopcion),
+              tareas_completadas: totalCompletadas,
+              tareas_pendientes: totalPendientes
+            });
+          }
+        })
+        .catch((err) => console.error("Error al cargar resumen de progreso:", err));
+    } else {
+      // Para vista individual del colaborador
+      getMiProgreso()
+        .then((res) => {
+          if (Array.isArray(res)) {
+            const total = res.length || 1;
+            const completadas = res.filter((item: any) => item.estado === "Completado" || item.estado === "completado").length;
+            const pendientes = res.filter((item: any) => item.estado !== "Completado" && item.estado !== "completado").length;
+            const porcentaje = Math.round((completadas / total) * 100);
+
+            setPersonalProgress({
+              porcentaje_adopcion: porcentaje,
+              tareas_completadas: completadas,
+              tareas_pendientes: pendientes
+            });
+          }
+        })
+        .catch((err) => console.error("Error al cargar mi progreso:", err));
+    }
+  }, [rol]);
+
   const cfg = roleConfig[rol];
-  const completedTasks = cfg.tasks.filter(
+  const completedTasks = personalProgress ? personalProgress.tareas_completadas : cfg.tasks.filter(
     (t) => t.status === "completado",
   ).length;
-  const pendingTasks = cfg.tasks.filter(
+  const pendingTasks = personalProgress ? personalProgress.tareas_pendientes : cfg.tasks.filter(
     (t) => t.status !== "completado",
   ).length;
   const activeAlerts = whatsappAlerts.filter(
     (a) => a.enabled,
   ).length;
+  const progressAdoption = personalProgress ? personalProgress.porcentaje_adopcion : cfg.progress;
 
   /* Gestalt similitud: todas las KPI cards tienen igual forma, tamaño y estructura */
   const iconAlternate = (i: number) =>
@@ -93,7 +163,7 @@ export default function DashboardView({ rol }: { rol: RolId }) {
         <KPICard
           icon={<TrendingUp size={18} />}
           label="Adopción del área"
-          value={`${cfg.progress}%`}
+          value={`${progressAdoption}%`}
           sub="Meta: 90% este mes"
           color={cfg.color}
           trend="+5%"
@@ -235,7 +305,7 @@ export default function DashboardView({ rol }: { rol: RolId }) {
             Avance por área
           </h2>
           <div className="flex flex-col gap-4">
-            {areaStats.map((a) => (
+            {stats.map((a) => (
               <div key={a.area}>
                 <div className="flex justify-between text-xs mb-1.5">
                   <span

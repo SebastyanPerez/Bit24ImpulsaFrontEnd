@@ -3,6 +3,7 @@ import { ShieldAlert } from "lucide-react";
 import { C } from "../data/datosRegenda";
 import { BtnGhost, BtnPrimary, ProgressBar } from "../components/ui-shared/DesignSystem";
 import { getGuias, Guia } from "../api/guias";
+import { marcarTareaCompletada } from "../api/progreso";
 import { getApiErrorMessage } from "../api/usuarios";
 import { useAuth } from "../context/AuthContext";
 
@@ -77,7 +78,8 @@ export default function MicroaprendizajeView() {
     fetchLessons();
   }, [usuario?.id]);
 
-  function markLearned(id: string) {
+  async function markLearned(id: string) {
+    const lesson = lessons.find((l) => l.id === id);
     setLessons((prev) =>
       prev.map((l) => {
         if (l.id !== id) return l;
@@ -86,6 +88,14 @@ export default function MicroaprendizajeView() {
       })
     );
     setActive(null);
+
+    if (lesson && lesson.tarea_id) {
+      try {
+        await marcarTareaCompletada(lesson.tarea_id);
+      } catch (err) {
+        console.error("Error al marcar la tarea asociada como completada:", err);
+      }
+    }
   }
 
   /* Gestalt similitud: todas las tarjetas de lección tienen igual estructura */

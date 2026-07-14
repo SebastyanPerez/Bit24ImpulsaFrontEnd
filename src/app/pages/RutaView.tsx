@@ -5,6 +5,7 @@ import { ProgressBar, StatusBadge } from "../components/ui-shared/DesignSystem";
 import { getRutas, getTareasByRuta, Tarea } from "../api/rutas";
 import { getApiErrorMessage } from "../api/usuarios";
 import { useAuth } from "../context/AuthContext";
+import { getProgresoMe, updateProgreso } from "../api/progreso";
 
 // ─── MÓDULO 3: Ruta de adopción por rol ───────────────────────────────────────
 export default function RutaView({ rol }: { rol: RolId }) {
@@ -36,13 +37,29 @@ export default function RutaView({ rol }: { rol: RolId }) {
         }
 
         const data = await getTareasByRuta(matchedRoute.id);
+        let progressData: any[] = [];
+        try {
+          progressData = await getProgresoMe();
+        } catch (err) {
+          console.error("Error al obtener progreso del servidor:", err);
+        }
+
+        const progressMap = new Map<string, string>();
+        progressData.forEach((p) => {
+          progressMap.set(p.tarea_id, p.estado);
+        });
+
         const mapped = data.map((t) => {
-          const storedStatus = localStorage.getItem(`task_status_${usuario?.id || "anon"}_${t.id}`);
+          const backendState = progressMap.get(t.id);
+          let status: "pendiente" | "en_proceso" | "completado" = "pendiente";
+          if (backendState === "En Proceso") status = "en_proceso";
+          else if (backendState === "Completado") status = "completado";
+
           return {
             ...t,
             title: t.titulo || t.title || "Sin título",
             desc: t.descripcion || t.desc || "Sin descripción",
-            status: (storedStatus as "completado" | "en_proceso" | "pendiente") || "pendiente"
+            status
           };
         });
 
@@ -65,19 +82,31 @@ export default function RutaView({ rol }: { rol: RolId }) {
   const completed = tasks.filter((t) => t.status === "completado").length;
   const progress = tasks.length > 0 ? Math.round((completed / tasks.length) * 100) : 0;
 
-  function advance(id: string) {
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id !== id) return t;
-        let newStatus: "pendiente" | "en_proceso" | "completado" = "pendiente";
-        if (t.status === "pendiente") newStatus = "en_proceso";
-        else if (t.status === "en_proceso") newStatus = "completado";
-        else return t;
+  async function advance(id: string) {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
 
-        localStorage.setItem(`task_status_${usuario?.id || "anon"}_${id}`, newStatus);
-        return { ...t, status: newStatus };
-      })
-    );
+    let newStatus: "pendiente" | "en_proceso" | "completado" = "pendiente";
+    let newBackendStatus: "Pendiente" | "En Proceso" | "Completado" = "Pendiente";
+
+    if (task.status === "pendiente") {
+      newStatus = "en_proceso";
+      newBackendStatus = "En Proceso";
+    } else if (task.status === "en_proceso") {
+      newStatus = "completado";
+      newBackendStatus = "Completado";
+    } else {
+      return;
+    }
+
+    try {
+      await updateProgreso(id, newBackendStatus);
+      setTasks((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
+      );
+    } catch (err) {
+      console.error("Error al actualizar progreso en el servidor:", err);
+    }
   }
 
   return (
