@@ -45,14 +45,38 @@ export default function DashboardView({ rol }: { rol: RolId }) {
     tareas_pendientes: number;
   } | null>(null);
 
-  useEffect(() => {
-    const isManager = rol === "responsable" || rol === "administracion";
+  const roleName = usuario?.rol?.nombre || "";
+  const isAdminOrResponsible =
+    roleName === "Administrador" ||
+    roleName === "Responsable Interno" ||
+    rol === "administracion" ||
+    rol === "responsable";
 
-    if (isManager) {
+  useEffect(() => {
+    // 1. Obtener progreso de tareas personales del usuario autenticado (para la tarjeta “Tareas completadas”)
+    getMiProgreso()
+      .then((res) => {
+        if (Array.isArray(res)) {
+          const total = res.length;
+          const completadas = res.filter((item: any) => item.estado === "Completado" || item.estado === "completado").length;
+          const pendientes = res.filter((item: any) => item.estado !== "Completado" && item.estado !== "completado").length;
+          const porcentaje = total > 0 ? Math.round((completadas / total) * 100) : 0;
+
+          setPersonalProgress((prev) => ({
+            porcentaje_adopcion: isAdminOrResponsible ? (prev?.porcentaje_adopcion ?? 0) : porcentaje,
+            tareas_completadas: completadas,
+            tareas_pendientes: pendientes
+          }));
+        }
+      })
+      .catch((err) => console.error("Error al cargar mi progreso personal:", err));
+
+    // 2. Si es Administrador/Responsable Interno, cargar los datos de todas las áreas
+    if (isAdminOrResponsible) {
       getProgresoResumen()
         .then((resumen) => {
           if (Array.isArray(resumen)) {
-            // Actualizar tabla "Avance por área"
+            // Actualizar tabla/lista “Avance por área”
             setStats((prev) =>
               prev.map((a) => {
                 const matched = resumen.find(
@@ -60,51 +84,24 @@ export default function DashboardView({ rol }: { rol: RolId }) {
                     r.rol_nombre.toLowerCase() === a.area.toLowerCase() ||
                     (a.area === "Almacén" && r.rol_nombre === "Almacén")
                 );
-                if (matched) {
-                  return {
-                    ...a,
-                    progress: matched.porcentaje_adopcion,
-                  };
-                }
-                return a;
+                return matched ? { ...a, progress: matched.porcentaje_adopcion } : a;
               })
             );
 
-            // Calcular porcentajes agregados para las KPIs superiores de la vista Admin/Responsable
+            // Calcular la adopción promedio general de todas las áreas
             const totalAreas = resumen.length || 1;
             const avgAdopcion = resumen.reduce((acc, curr) => acc + (curr.porcentaje_adopcion || 0), 0) / totalAreas;
-            const totalCompletadas = resumen.reduce((acc, curr) => acc + (curr.tareas_completadas || 0), 0);
-            const totalActivas = resumen.reduce((acc, curr) => acc + (curr.tareas_activas || 0), 0);
-            const totalPendientes = Math.max(0, totalActivas - totalCompletadas);
 
-            setPersonalProgress({
+            setPersonalProgress((prev) => ({
               porcentaje_adopcion: Math.round(avgAdopcion),
-              tareas_completadas: totalCompletadas,
-              tareas_pendientes: totalPendientes
-            });
+              tareas_completadas: prev?.tareas_completadas ?? 0,
+              tareas_pendientes: prev?.tareas_pendientes ?? 0
+            }));
           }
         })
         .catch((err) => console.error("Error al cargar resumen de progreso:", err));
-    } else {
-      // Para vista individual del colaborador
-      getMiProgreso()
-        .then((res) => {
-          if (Array.isArray(res)) {
-            const total = res.length || 1;
-            const completadas = res.filter((item: any) => item.estado === "Completado" || item.estado === "completado").length;
-            const pendientes = res.filter((item: any) => item.estado !== "Completado" && item.estado !== "completado").length;
-            const porcentaje = Math.round((completadas / total) * 100);
-
-            setPersonalProgress({
-              porcentaje_adopcion: porcentaje,
-              tareas_completadas: completadas,
-              tareas_pendientes: pendientes
-            });
-          }
-        })
-        .catch((err) => console.error("Error al cargar mi progreso:", err));
     }
-  }, [rol]);
+  }, [rol, isAdminOrResponsible]);
 
   const cfg = roleConfig[rol];
   const completedTasks = personalProgress ? personalProgress.tareas_completadas : cfg.tasks.filter(
@@ -196,147 +193,149 @@ export default function DashboardView({ rol }: { rol: RolId }) {
       </div>
 
       {/* Chart + avance por área — Gestalt continuidad */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div
-          className="lg:col-span-2 bg-white rounded-2xl p-5"
-          style={{
-            border: `1px solid ${C.purple}10`,
-            boxShadow: `0 2px 12px ${C.purple}08`,
-          }}
-        >
-          <h2
-            className="font-extrabold text-base mb-0.5"
+      {isAdminOrResponsible && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div
+            className="lg:col-span-2 bg-white rounded-2xl p-5"
             style={{
-              color: C.purple,
-              fontFamily: "var(--font-brand)",
+              border: `1px solid ${C.purple}10`,
+              boxShadow: `0 2px 12px ${C.purple}08`,
             }}
           >
-            Progreso de adopción — REGENDA
-          </h2>
-          <p
-            className="text-xs mb-4"
-            style={{
-              color: C.gray,
-              fontFamily: "var(--font-body)",
-            }}
-          >
-            Avance acumulado del equipo (últimas 6 semanas)
-          </p>
-          <ResponsiveContainer width="100%" height={180}>
-            <AreaChart
-              data={adoptionTrend}
-              margin={{
-                top: 4,
-                right: 4,
-                bottom: 0,
-                left: -20,
+            <h2
+              className="font-extrabold text-base mb-0.5"
+              style={{
+                color: C.purple,
+                fontFamily: "var(--font-brand)",
               }}
             >
-              <defs>
-                <linearGradient
-                  id="areaGrad"
-                  x1="0"
-                  y1="0"
-                  x2="0"
-                  y2="1"
-                >
-                  <stop
-                    offset="5%"
-                    stopColor={C.purple}
-                    stopOpacity={0.25}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor={C.purple}
-                    stopOpacity={0}
-                  />
-                </linearGradient>
-              </defs>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="#f0ebf0"
-              />
-              <XAxis
-                dataKey="sem"
-                tick={{ fontSize: 11, fill: C.gray }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: C.gray }}
-                axisLine={false}
-                tickLine={false}
-                domain={[0, 100]}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: "#fff",
-                  border: `1px solid ${C.purple}20`,
-                  borderRadius: 10,
-                  fontSize: 12,
+              Progreso de adopción — REGENDA
+            </h2>
+            <p
+              className="text-xs mb-4"
+              style={{
+                color: C.gray,
+                fontFamily: "var(--font-body)",
+              }}
+            >
+              Avance acumulado del equipo (últimas 6 semanas)
+            </p>
+            <ResponsiveContainer width="100%" height={180}>
+              <AreaChart
+                data={adoptionTrend}
+                margin={{
+                  top: 4,
+                  right: 4,
+                  bottom: 0,
+                  left: -20,
                 }}
-              />
-              <Area
-                type="monotone"
-                dataKey="avance"
-                stroke={C.purple}
-                strokeWidth={2.5}
-                fill="url(#areaGrad)"
-                name="Adopción %"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+              >
+                <defs>
+                  <linearGradient
+                    id="areaGrad"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop
+                      offset="5%"
+                      stopColor={C.purple}
+                      stopOpacity={0.25}
+                    />
+                    <stop
+                      offset="95%"
+                      stopColor={C.purple}
+                      stopOpacity={0}
+                    />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#f0ebf0"
+                />
+                <XAxis
+                  dataKey="sem"
+                  tick={{ fontSize: 11, fill: C.gray }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: C.gray }}
+                  axisLine={false}
+                  tickLine={false}
+                  domain={[0, 100]}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "#fff",
+                    border: `1px solid ${C.purple}20`,
+                    borderRadius: 10,
+                    fontSize: 12,
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="avance"
+                  stroke={C.purple}
+                  strokeWidth={2.5}
+                  fill="url(#areaGrad)"
+                  name="Adopción %"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
 
-        <div
-          className="bg-white rounded-2xl p-5"
-          style={{
-            border: `1px solid ${C.teal}15`,
-            boxShadow: `0 2px 12px ${C.teal}08`,
-          }}
-        >
-          <h2
-            className="font-extrabold text-base mb-4"
+          <div
+            className="bg-white rounded-2xl p-5"
             style={{
-              color: C.purple,
-              fontFamily: "var(--font-brand)",
+              border: `1px solid ${C.teal}15`,
+              boxShadow: `0 2px 12px ${C.teal}08`,
             }}
           >
-            Avance por área
-          </h2>
-          <div className="flex flex-col gap-4">
-            {stats.map((a) => (
-              <div key={a.area}>
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span
-                    className="font-semibold"
-                    style={{
-                      color: "#2a1028",
-                      fontFamily: "var(--font-brand)",
-                    }}
-                  >
-                    {a.area}
-                  </span>
-                  <span
-                    className="font-extrabold"
-                    style={{
-                      color: a.color,
-                      fontFamily: "var(--font-brand)",
-                    }}
-                  >
-                    {a.progress}%
-                  </span>
+            <h2
+              className="font-extrabold text-base mb-4"
+              style={{
+                color: C.purple,
+                fontFamily: "var(--font-brand)",
+              }}
+            >
+              Avance por área
+            </h2>
+            <div className="flex flex-col gap-4">
+              {stats.map((a) => (
+                <div key={a.area}>
+                  <div className="flex justify-between text-xs mb-1.5">
+                    <span
+                      className="font-semibold"
+                      style={{
+                        color: "#2a1028",
+                        fontFamily: "var(--font-brand)",
+                      }}
+                    >
+                      {a.area}
+                    </span>
+                    <span
+                      className="font-extrabold"
+                      style={{
+                        color: a.color,
+                        fontFamily: "var(--font-brand)",
+                      }}
+                    >
+                      {a.progress}%
+                    </span>
+                  </div>
+                  <ProgressBar
+                    value={a.progress}
+                    color={a.color}
+                    size="sm"
+                  />
                 </div>
-                <ProgressBar
-                  value={a.progress}
-                  color={a.color}
-                  size="sm"
-                />
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Tareas recientes */}
       <div
