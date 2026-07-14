@@ -52,3 +52,9 @@ export const atenderAlerta = async (id: string): Promise<Alerta> => {
     const response = await axiosClient.put<Alerta>(`/alertas/${id}/atender`);
     return response.data;
 };
+
+// Aliases for compatibility with PanelResponsableView.tsx
+export const getTodasAlertas = getAlertas;
+export const crearAlerta = createAlerta;
+export const marcarAtendida = atenderAlerta;
+
