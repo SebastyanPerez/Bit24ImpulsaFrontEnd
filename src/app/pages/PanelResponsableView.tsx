@@ -10,11 +10,33 @@ import {
 } from "../components/ui-shared/DesignSystem";
 import { getUsuarios, Usuario } from "../api/usuarios";
 import { getTodasAlertas, crearAlerta, marcarAtendida, Alerta } from "../api/alertas";
+import { getTodosTickets, asignarTicket, actualizarEstado, Soporte } from "../api/soporte";
+import { useAuth } from "../context/AuthContext";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 
 // ─── MÓDULO 8: Panel del Responsable Interno ──────────────────────────────────
 export default function PanelResponsableView() {
+  const { usuario: currentUser } = useAuth();
   const [users, setUsers] = useState<Usuario[]>([]);
   const [allAlerts, setAllAlerts] = useState<Alerta[]>([]);
+  const [tickets, setTickets] = useState<Soporte[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState(true);
+  const [ticketsError, setTicketsError] = useState<string | null>(null);
+
   const [selectedUser, setSelectedUser] = useState("");
   const [formTitle, setFormTitle] = useState("");
   const [formMessage, setFormMessage] = useState("");
@@ -24,6 +46,20 @@ export default function PanelResponsableView() {
   const [formStatus, setFormStatus] = useState<string | null>(null);
   const [alertsLoading, setAlertsLoading] = useState(true);
   const [alertsError, setAlertsError] = useState<string | null>(null);
+
+  const fetchTickets = async () => {
+    try {
+      setTicketsLoading(true);
+      setTicketsError(null);
+      const data = await getTodosTickets();
+      setTickets(data);
+    } catch (err) {
+      console.error("Error al cargar tickets:", err);
+      setTicketsError("Error al cargar la lista de tickets.");
+    } finally {
+      setTicketsLoading(false);
+    }
+  };
 
   useEffect(() => {
     getUsuarios()
@@ -42,7 +78,9 @@ export default function PanelResponsableView() {
         setAlertsLoading(false);
       }
     };
+
     fetchAllAlerts();
+    fetchTickets();
   }, []);
 
   const handleCreateAlert = async (e: React.FormEvent) => {
@@ -73,14 +111,32 @@ export default function PanelResponsableView() {
     }
   };
 
-  const handleAttendAlert = async (id: string | number) => {
+  const handleAttendAlert = async (id: string) => {
     try {
       await marcarAtendida(id);
       setAllAlerts((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, atendida: true } : a))
+        prev.map((a) => (a.id === id ? { ...a, estado: "Atendida" } : a))
       );
     } catch (err) {
       console.error("Error al atender alerta:", err);
+    }
+  };
+
+  const handleAsignarme = async (id: string) => {
+    try {
+      await asignarTicket(id);
+      await fetchTickets();
+    } catch (err) {
+      console.error("Error al asignarse el ticket:", err);
+    }
+  };
+
+  const handleEstadoChange = async (id: string, nuevoEstado: string) => {
+    try {
+      await actualizarEstado(id, nuevoEstado);
+      await fetchTickets();
+    } catch (err) {
+      console.error("Error al cambiar estado del ticket:", err);
     }
   };
 
@@ -88,6 +144,60 @@ export default function PanelResponsableView() {
     area: a.area,
     avance: a.progress,
   }));
+
+  const openTicketsCount = tickets.filter((t) => t.estado !== "Resuelto" && t.estado !== "Cerrado").length;
+  const pendingCount = tickets.filter((t) => t.estado === "Abierto").length;
+  const inAttentionCount = tickets.filter((t) => t.estado === "En Proceso").length;
+
+  const getStatusBadge = (estado: string) => {
+    switch (estado) {
+      case "Abierto":
+        return (
+          <span
+            className="text-xs font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap bg-red-100 text-red-700"
+            style={{ fontFamily: "var(--font-brand)" }}
+          >
+            Abierto
+          </span>
+        );
+      case "En Proceso":
+        return (
+          <span
+            className="text-xs font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap bg-amber-100 text-amber-800"
+            style={{ fontFamily: "var(--font-brand)" }}
+          >
+            En Proceso
+          </span>
+        );
+      case "Resuelto":
+        return (
+          <span
+            className="text-xs font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap bg-emerald-100 text-emerald-800"
+            style={{ fontFamily: "var(--font-brand)" }}
+          >
+            Resuelto
+          </span>
+        );
+      case "Cerrado":
+        return (
+          <span
+            className="text-xs font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap bg-slate-100 text-slate-600"
+            style={{ fontFamily: "var(--font-brand)" }}
+          >
+            Cerrado
+          </span>
+        );
+      default:
+        return (
+          <span
+            className="text-xs font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap bg-slate-100 text-slate-600"
+            style={{ fontFamily: "var(--font-brand)" }}
+          >
+            {estado}
+          </span>
+        );
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -141,8 +251,12 @@ export default function PanelResponsableView() {
         <KPICard
           icon={<Headphones size={18} />}
           label="Tickets abiertos"
-          value="2"
-          sub="1 pendiente, 1 en atención"
+          value={ticketsLoading ? "..." : String(openTicketsCount)}
+          sub={
+            ticketsLoading
+              ? "Cargando tickets..."
+              : `${pendingCount} pendiente, ${inAttentionCount} en atención`
+          }
           color={C.purpleMid}
           iconStyle="outline"
         />
@@ -485,10 +599,10 @@ export default function PanelResponsableView() {
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          {al.leida && (
+                          {al.estado === "Leída" && (
                             <span className="text-[10px] text-gray-400 font-semibold" style={{ fontFamily: "var(--font-body)" }}>Leída</span>
                           )}
-                          {al.atendida ? (
+                          {al.estado === "Atendida" ? (
                             <span
                               className="text-[10px] font-semibold text-teal-600 flex items-center gap-0.5"
                               style={{ fontFamily: "var(--font-brand)" }}
@@ -522,6 +636,211 @@ export default function PanelResponsableView() {
           )}
         </div>
       </div>
+
+      {/* ─── GESTIÓN DE SOPORTE ──────────────────────────────────────────────── */}
+      {(currentUser?.rol?.nombre === "Administrador" ||
+        currentUser?.rol?.nombre === "Responsable Interno") && (
+          <div
+            className="bg-white rounded-2xl p-5"
+            style={{ border: `1px solid ${C.purple}10` }}
+          >
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+              <div>
+                <h3
+                  className="font-extrabold text-base flex items-center gap-2"
+                  style={{
+                    color: C.purple,
+                    fontFamily: "var(--font-brand)",
+                  }}
+                >
+                  <Headphones size={18} /> Gestión de Soporte
+                </h3>
+                <p
+                  className="text-xs mt-0.5"
+                  style={{
+                    color: C.gray,
+                    fontFamily: "var(--font-body)",
+                  }}
+                >
+                  Lista completa de incidentes y requerimientos de soporte.
+                </p>
+              </div>
+            </div>
+
+            {ticketsLoading && (
+              <div
+                className="text-center py-8 text-xs text-gray-500"
+                style={{ fontFamily: "var(--font-body)" }}
+              >
+                Cargando tickets de soporte...
+              </div>
+            )}
+
+            {ticketsError && (
+              <div
+                className="text-center py-8 text-xs text-red-500"
+                style={{ fontFamily: "var(--font-body)" }}
+              >
+                {ticketsError}
+              </div>
+            )}
+
+            {!ticketsLoading && !ticketsError && (
+              <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white">
+                <Table>
+                  <TableHeader className="bg-slate-50/50">
+                    <TableRow>
+                      <TableHead
+                        className="font-bold py-3"
+                        style={{
+                          color: "#5D1451",
+                          fontFamily: "var(--font-brand)",
+                        }}
+                      >
+                        Título
+                      </TableHead>
+                      <TableHead
+                        className="font-bold py-3"
+                        style={{
+                          color: "#5D1451",
+                          fontFamily: "var(--font-brand)",
+                        }}
+                      >
+                        Reportado por
+                      </TableHead>
+                      <TableHead
+                        className="font-bold py-3"
+                        style={{
+                          color: "#5D1451",
+                          fontFamily: "var(--font-brand)",
+                        }}
+                      >
+                        Categoría
+                      </TableHead>
+                      <TableHead
+                        className="font-bold py-3"
+                        style={{
+                          color: "#5D1451",
+                          fontFamily: "var(--font-brand)",
+                        }}
+                      >
+                        Estado
+                      </TableHead>
+                      <TableHead
+                        className="font-bold py-3"
+                        style={{
+                          color: "#5D1451",
+                          fontFamily: "var(--font-brand)",
+                        }}
+                      >
+                        Responsable
+                      </TableHead>
+                      <TableHead
+                        className="font-bold py-3 text-right"
+                        style={{
+                          color: "#5D1451",
+                          fontFamily: "var(--font-brand)",
+                        }}
+                      >
+                        Acción
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tickets.map((t) => (
+                      <TableRow
+                        key={t.id}
+                        className="hover:bg-slate-50/40 transition-colors animate-fade-in"
+                      >
+                        <TableCell
+                          className="py-4 font-semibold text-slate-800"
+                          style={{ fontFamily: "var(--font-brand)" }}
+                        >
+                          <div>
+                            <div>{t.titulo}</div>
+                            {t.descripcion && (
+                              <div className="text-xs text-slate-500 font-normal mt-0.5">
+                                {t.descripcion}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell
+                          className="py-4 text-slate-600"
+                          style={{ fontFamily: "var(--font-body)" }}
+                        >
+                          {t.usuario?.nombre} {t.usuario?.apellido}
+                        </TableCell>
+                        <TableCell
+                          className="py-4 text-slate-600 font-medium"
+                          style={{ fontFamily: "var(--font-body)" }}
+                        >
+                          {t.categoria?.nombre || "General"}
+                        </TableCell>
+                        <TableCell className="py-4">
+                          {getStatusBadge(t.estado)}
+                        </TableCell>
+                        <TableCell
+                          className="py-4 text-slate-600 font-medium"
+                          style={{ fontFamily: "var(--font-body)" }}
+                        >
+                          {t.responsable
+                            ? `${t.responsable.nombre} ${t.responsable.apellido}`
+                            : "Sin asignar"}
+                        </TableCell>
+                        <TableCell className="py-4 text-right">
+                          {t.estado === "Abierto" &&
+                            t.responsable_id === null ? (
+                            <button
+                              onClick={() => handleAsignarme(t.id)}
+                              className="text-xs font-bold px-3 py-1.5 rounded-xl text-white transition-opacity hover:opacity-90 active:scale-95"
+                              style={{
+                                backgroundColor: C.purple,
+                                fontFamily: "var(--font-brand)",
+                                minHeight: "30px",
+                              }}
+                            >
+                              Asignarme
+                            </button>
+                          ) : t.responsable_id !== null ? (
+                            <Select
+                              onValueChange={(val) =>
+                                handleEstadoChange(t.id, val)
+                              }
+                              value={t.estado}
+                            >
+                              <SelectTrigger className="w-[140px] ml-auto rounded-xl">
+                                <SelectValue placeholder="Estado" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="En Proceso">
+                                  En Proceso
+                                </SelectItem>
+                                <SelectItem value="Resuelto">Resuelto</SelectItem>
+                                <SelectItem value="Cerrado">Cerrado</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : null}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {tickets.length === 0 && (
+                      <TableRow>
+                        <TableCell
+                          colSpan={6}
+                          className="text-center py-12 text-slate-400"
+                          style={{ fontFamily: "var(--font-body)" }}
+                        >
+                          No se encontraron tickets en el sistema.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        )}
     </div>
   );
 }

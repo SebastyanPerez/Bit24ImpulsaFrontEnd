@@ -1,48 +1,80 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCircle2, Headphones, Plus } from "lucide-react";
-import { C, supportCases } from "../data/datosRegenda";
+import { C } from "../data/datosRegenda";
 import {
   BtnGhost,
   BtnPrimary,
   FilledIconCard,
   StatusBadge,
 } from "../components/ui-shared/DesignSystem";
+import {
+  getCategoriasSoporte,
+  createSoporte,
+  getSoporteMe,
+  Soporte,
+  CategoriaSoporte,
+} from "../api/soporte";
 
 // ─── MÓDULO 7: Soporte con trazabilidad ───────────────────────────────────────
 export default function SoporteView() {
-  const [cases, setCases] = useState(supportCases);
+  const [cases, setCases] = useState<Soporte[]>([]);
+  const [categories, setCategories] = useState<CategoriaSoporte[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
-    category: "Ventas",
+    title: "",
+    categoryId: "",
     description: "",
-    priority: "media",
   });
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  function submit(e: React.FormEvent) {
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        setError(null);
+        const [cats, myTickets] = await Promise.all([
+          getCategoriasSoporte(),
+          getSoporteMe(),
+        ]);
+        setCategories(cats);
+        setCases(myTickets);
+        if (cats.length > 0) {
+          setForm((p) => ({ ...p, categoryId: cats[0].id }));
+        }
+      } catch (err) {
+        console.error("Error al cargar datos de soporte:", err);
+        setError("Error al conectar con la base de datos de soporte.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setCases((prev) => [
-      {
-        id: `SOC-00${prev.length + 1}`,
-        title:
-          form.description.slice(0, 55) ||
-          "Nuevo caso de soporte",
-        area: form.category,
-        priority: form.priority,
-        status: "pendiente" as const,
-        responsible: "Sin asignar",
-        date: "1 Jul 2025",
-      },
-      ...prev,
-    ]);
-    setSubmitted(true);
-    setShowForm(false);
-    setForm({
-      category: "Ventas",
-      description: "",
-      priority: "media",
-    });
-    setTimeout(() => setSubmitted(false), 3500);
+    if (!form.categoryId || !form.title) return;
+    try {
+      const newTicket = await createSoporte({
+        categoria_id: form.categoryId,
+        titulo: form.title,
+        descripcion: form.description,
+      });
+      setCases((prev) => [newTicket, ...prev]);
+      setSubmitted(true);
+      setShowForm(false);
+      setForm({
+        title: "",
+        categoryId: categories[0]?.id || "",
+        description: "",
+      });
+      setTimeout(() => setSubmitted(false), 3500);
+    } catch (err) {
+      console.error("Error al crear caso de soporte:", err);
+      alert("Hubo un error al registrar el caso. Por favor reintente.");
+    }
   }
 
   return (
@@ -65,8 +97,7 @@ export default function SoporteView() {
               fontFamily: "var(--font-body)",
             }}
           >
-            Registrá y hacé seguimiento a casos con trazabilidad
-            completa
+            Registrá y hacé seguimiento a casos con trazabilidad completa
           </p>
         </div>
         <BtnPrimary onClick={() => setShowForm(!showForm)}>
@@ -85,8 +116,7 @@ export default function SoporteView() {
           }}
         >
           <CheckCircle2 size={16} style={{ color: C.teal }} />{" "}
-          Caso registrado correctamente. El equipo de soporte lo
-          atenderá pronto.
+          Caso registrado correctamente. El equipo de soporte lo atenderá pronto.
         </div>
       )}
 
@@ -112,62 +142,74 @@ export default function SoporteView() {
             className="flex flex-col gap-4"
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                {
-                  label: "Área / Categoría",
-                  key: "category",
-                  type: "select",
-                  opts: [
-                    "Ventas",
-                    "Caja",
-                    "Almacén",
-                    "Compras",
-                    "Administración",
-                  ],
-                },
-                {
-                  label: "Prioridad",
-                  key: "priority",
-                  type: "select",
-                  opts: ["alta", "media", "baja"],
-                },
-              ].map((f) => (
-                <div key={f.key}>
-                  <label
-                    className="text-xs font-extrabold uppercase tracking-widest block mb-1"
-                    style={{
-                      color: C.purple,
-                      fontFamily: "var(--font-brand)",
-                    }}
-                  >
-                    {f.label}
-                  </label>
-                  <select
-                    value={
-                      (form as Record<string, string>)[f.key]
-                    }
-                    onChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        [f.key]: e.target.value,
-                      }))
-                    }
-                    className="w-full text-sm rounded-xl px-3 py-2.5 outline-none"
-                    style={{
-                      border: `1.5px solid ${C.purple}20`,
-                      backgroundColor: "#fdfbfd",
-                      color: "#2a1028",
-                      fontFamily: "var(--font-body)",
-                      minHeight: "40px",
-                    }}
-                  >
-                    {f.opts.map((o) => (
-                      <option key={o}>{o}</option>
-                    ))}
-                  </select>
-                </div>
-              ))}
+              <div>
+                <label
+                  className="text-xs font-extrabold uppercase tracking-widest block mb-1"
+                  style={{
+                    color: C.purple,
+                    fontFamily: "var(--font-brand)",
+                  }}
+                >
+                  Título *
+                </label>
+                <input
+                  required
+                  type="text"
+                  placeholder="Ej: Error al emitir boletas de venta"
+                  value={form.title}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      title: e.target.value,
+                    }))
+                  }
+                  className="w-full text-sm rounded-xl px-3 py-2.5 outline-none"
+                  style={{
+                    border: `1.5px solid ${C.purple}20`,
+                    backgroundColor: "#fdfbfd",
+                    color: "#2a1028",
+                    fontFamily: "var(--font-body)",
+                    minHeight: "40px",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  className="text-xs font-extrabold uppercase tracking-widest block mb-1"
+                  style={{
+                    color: C.purple,
+                    fontFamily: "var(--font-brand)",
+                  }}
+                >
+                  Área / Categoría *
+                </label>
+                <select
+                  value={form.categoryId}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      categoryId: e.target.value,
+                    }))
+                  }
+                  className="w-full text-sm rounded-xl px-3 py-2.5 outline-none"
+                  style={{
+                    border: `1.5px solid ${C.purple}20`,
+                    backgroundColor: "#fdfbfd",
+                    color: "#2a1028",
+                    fontFamily: "var(--font-body)",
+                    minHeight: "40px",
+                  }}
+                >
+                  {categories.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
+
             <div>
               <label
                 className="text-xs font-extrabold uppercase tracking-widest block mb-1"
@@ -191,37 +233,17 @@ export default function SoporteView() {
                 placeholder="Describí el problema con el mayor detalle posible..."
                 className="w-full text-sm rounded-xl px-3 py-2.5 outline-none resize-none"
                 style={{
-                  border: `1.5px solid ${C.purple}20`,
+                  border: `1.5px solid ${C.purple}20$,`,
+                  borderColor: `${C.purple}20`,
                   backgroundColor: "#fdfbfd",
                   color: "#2a1028",
                   fontFamily: "var(--font-body)",
                 }}
               />
             </div>
-            <div>
-              <label
-                className="text-xs font-extrabold uppercase tracking-widest block mb-1"
-                style={{
-                  color: C.purple,
-                  fontFamily: "var(--font-brand)",
-                }}
-              >
-                Evidencia (opcional)
-              </label>
-              <div
-                className="border-2 border-dashed rounded-xl p-4 text-center text-xs cursor-pointer hover:opacity-80 transition-opacity"
-                style={{
-                  borderColor: `${C.purple}25`,
-                  color: C.gray,
-                  fontFamily: "var(--font-body)",
-                }}
-              >
-                Adjuntá captura de pantalla o archivo · Solo
-                visual en demo
-              </div>
-            </div>
+
             <div className="flex gap-2">
-              <BtnPrimary onClick={() => {}}>
+              <BtnPrimary type="submit">
                 Registrar caso
               </BtnPrimary>
               <BtnGhost onClick={() => setShowForm(false)}>
@@ -232,89 +254,123 @@ export default function SoporteView() {
         </div>
       )}
 
-      <div className="flex flex-col gap-3">
-        <h2
-          className="font-extrabold text-sm uppercase tracking-widest"
-          style={{
-            color: C.gray,
-            fontFamily: "var(--font-brand)",
-          }}
-        >
-          Casos registrados ({cases.length})
-        </h2>
-        {cases.map((c) => {
-          const sColor =
-            c.status === "resuelto"
-              ? C.teal
-              : c.status === "en_atencion"
-                ? "#b37000"
-                : C.gray;
-          return (
-            <div
-              key={c.id}
-              className="bg-white rounded-2xl p-4 hover:shadow-md transition-shadow"
-              style={{ border: `1px solid ${C.purple}0d` }}
-            >
-              <div className="flex items-start gap-3">
-                <FilledIconCard
-                  icon={<Headphones size={16} />}
-                  size={38}
-                  color={sColor}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2 flex-wrap">
-                    <div>
-                      <span
-                        className="text-xs font-mono mr-2"
-                        style={{ color: C.gray }}
-                      >
-                        {c.id}
-                      </span>
-                      <span
-                        className="font-extrabold text-sm"
+      {error && (
+        <div className="text-center py-4 text-sm text-red-500 font-semibold bg-red-50 border border-red-100 rounded-xl" style={{ fontFamily: "var(--font-brand)" }}>
+          {error}
+        </div>
+      )}
+
+      {loading && (
+        <div className="text-center py-12 text-sm text-gray-500" style={{ fontFamily: "var(--font-body)" }}>
+          Cargando casos de soporte...
+        </div>
+      )}
+
+      {!loading && (
+        <div className="flex flex-col gap-3">
+          <h2
+            className="font-extrabold text-sm uppercase tracking-widest"
+            style={{
+              color: C.gray,
+              fontFamily: "var(--font-brand)",
+            }}
+          >
+            Casos registrados ({cases.length})
+          </h2>
+          {cases.length === 0 ? (
+            <p className="text-sm text-center py-8 text-gray-400 font-medium" style={{ fontFamily: "var(--font-body)" }}>
+              No tenés casos de soporte registrados.
+            </p>
+          ) : (
+            cases.map((c) => {
+              const sColor =
+                c.estado === "resuelto" || c.estado === "Resuelto"
+                  ? C.teal
+                  : c.estado === "en_atencion" || c.estado === "En Proceso"
+                    ? "#b37000"
+                    : c.estado === "Abierto"
+                      ? C.red
+                      : C.gray;
+              return (
+                <div
+                  key={c.id}
+                  className="bg-white rounded-2xl p-4 hover:shadow-md transition-shadow animate-fade-in"
+                  style={{ border: `1px solid ${C.purple}0d` }}
+                >
+                  <div className="flex items-start gap-3">
+                    <FilledIconCard
+                      icon={<Headphones size={16} />}
+                      size={38}
+                      color={sColor}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2 flex-wrap">
+                        <div>
+                          <span
+                            className="text-[10px] font-mono mr-2 uppercase tracking-wide bg-slate-100 py-0.5 px-2 rounded-md"
+                            style={{ color: C.gray }}
+                          >
+                            {c.id.slice(0, 8)}
+                          </span>
+                          <span
+                            className="font-extrabold text-sm"
+                            style={{
+                              color: "#2a1028",
+                              fontFamily: "var(--font-brand)",
+                            }}
+                          >
+                            {c.titulo}
+                          </span>
+                          {c.descripcion && (
+                            <p
+                              className="text-xs text-slate-500 mt-1 max-w-3xl leading-relaxed"
+                              style={{ fontFamily: "var(--font-body)" }}
+                            >
+                              {c.descripcion}
+                            </p>
+                          )}
+                        </div>
+                        <StatusBadge status={c.estado} />
+                      </div>
+                      <div
+                        className="flex items-center gap-3 text-[11px] mt-2 flex-wrap"
                         style={{
-                          color: "#2a1028",
-                          fontFamily: "var(--font-brand)",
+                          color: C.gray,
+                          fontFamily: "var(--font-body)",
                         }}
                       >
-                        {c.title}
-                      </span>
+                        <span>
+                          Área:{" "}
+                          <strong style={{ color: "#2a1028" }}>
+                            {c.categoria?.nombre || "General"}
+                          </strong>
+                        </span>
+                        ·
+                        <span>
+                          Resp.:{" "}
+                          <strong style={{ color: "#2a1028" }}>
+                            {c.responsable
+                              ? `${c.responsable.nombre} ${c.responsable.apellido}`
+                              : "Sin asignar"}
+                          </strong>
+                        </span>
+                        ·
+                        <span>
+                          {new Date(c.created_at).toLocaleDateString("es-ES", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </span>
+                      </div>
                     </div>
-                    <StatusBadge status={c.status} />
-                  </div>
-                  <div
-                    className="flex items-center gap-3 text-xs mt-1.5 flex-wrap"
-                    style={{
-                      color: C.gray,
-                      fontFamily: "var(--font-body)",
-                    }}
-                  >
-                    <span>
-                      Área:{" "}
-                      <strong style={{ color: "#2a1028" }}>
-                        {c.area}
-                      </strong>
-                    </span>
-                    ·
-                    <span>
-                      Prioridad:{" "}
-                      <StatusBadge status={c.priority} />
-                    </span>
-                    ·
-                    <span>
-                      Resp.:{" "}
-                      <strong style={{ color: "#2a1028" }}>
-                        {c.responsible}
-                      </strong>
-                    </span>
-                    ·<span>{c.date}</span>
                   </div>
                 </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              );
+            })
+          )}
+        </div>
+      )}
     </div>
   );
 }

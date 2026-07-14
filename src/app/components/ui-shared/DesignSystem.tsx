@@ -121,6 +121,36 @@ export function StatusBadge({ status }: { status: string }) {
       color: C.teal,
       bg: C.tealLight,
     },
+    Abierto: {
+      label: "Abierto",
+      color: C.red,
+      bg: C.redLight,
+    },
+    abierto: {
+      label: "Abierto",
+      color: C.red,
+      bg: C.redLight,
+    },
+    "En Proceso": {
+      label: "En Proceso",
+      color: "#b37000",
+      bg: C.yellowLight,
+    },
+    Resuelto: {
+      label: "Resuelto",
+      color: C.teal,
+      bg: C.tealLight,
+    },
+    Cerrado: {
+      label: "Cerrado",
+      color: C.gray,
+      bg: C.grayLight,
+    },
+    cerrado: {
+      label: "Cerrado",
+      color: C.gray,
+      bg: C.grayLight,
+    },
     bajo: { label: "Bajo", color: C.teal, bg: C.tealLight },
     medio: {
       label: "Medio",
