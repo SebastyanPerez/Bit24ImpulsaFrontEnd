@@ -135,22 +135,41 @@ export default function DashboardView({ rol }: { rol: RolId }) {
           >
             Bienvenido, {userDisplayName} 👋
           </h1>
-          <p
-            className="text-sm mt-0.5"
-            style={{
-              color: C.gray,
-              fontFamily: "var(--font-body)",
-            }}
-          >
-            Área:{" "}
-            <span
-              className="font-bold"
-              style={{ color: cfg.color }}
+          {roleName === "Administrador" ? (
+            <p
+              className="text-sm mt-0.5"
+              style={{
+                color: C.gray,
+                fontFamily: "var(--font-body)",
+              }}
             >
-              {cfg.label}
-            </span>{" "}
-            · REGENDA · 1 julio 2025
-          </p>
+              Área:{" "}
+              <span
+                className="font-bold"
+                style={{ color: C.purple }}
+              >
+                Todas las áreas
+              </span>{" "}
+              · REGENDA · 1 julio 2025
+            </p>
+          ) : (
+            <p
+              className="text-sm mt-0.5"
+              style={{
+                color: C.gray,
+                fontFamily: "var(--font-body)",
+              }}
+            >
+              Área:{" "}
+              <span
+                className="font-bold"
+                style={{ color: cfg?.color || C.purple }}
+              >
+                {roleName || cfg?.label || "Sin Área"}
+              </span>{" "}
+              · REGENDA · 1 julio 2025
+            </p>
+          )}
         </div>
 
       </div>

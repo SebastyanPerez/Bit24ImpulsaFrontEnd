@@ -224,6 +224,14 @@ export default function GestionContenido() {
             setSubmitError("El nombre es requerido.");
             return;
         }
+        if (rutaNombre.trim().length < 4) {
+            setSubmitError("El nombre de la ruta debe tener al menos 4 caracteres.");
+            return;
+        }
+        if (rutaDesc.trim() && rutaDesc.trim().length < 10) {
+            setSubmitError("La descripción opcional debe tener al menos 10 caracteres.");
+            return;
+        }
         try {
             setSubmitting(true);
             setSubmitError(null);

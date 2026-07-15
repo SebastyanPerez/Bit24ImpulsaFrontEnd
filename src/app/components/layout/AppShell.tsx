@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router";
 import {
   Bell,
   BookOpen,
@@ -38,6 +39,67 @@ import TecnologiasView from "../../pages/TecnologiasView";
 import LoginScreen from "../../pages/LoginScreen";
 import { GestionUsuarios } from "../../pages/GestionUsuarios";
 import GestionContenido from "../../pages/GestionContenido";
+
+export const navPathMap: Record<NavId, string> = {
+  dashboard: "/dashboard",
+  ruta: "/ruta",
+  microaprendizaje: "/microaprendizaje",
+  ia: "/asistente-ia",
+  alertas: "/alertas-whatsapp",
+  soporte: "/soporte",
+  responsable: "/panel-responsable",
+  tecnologias: "/tecnologias",
+  usuarios: "/gestion-usuarios",
+  contenido: "/gestion-contenido",
+};
+
+export function getNavIdFromPath(pathname: string): NavId {
+  const path = pathname.replace(/^\//, "");
+  switch (path) {
+    case "dashboard": return "dashboard";
+    case "ruta": return "ruta";
+    case "microaprendizaje": return "microaprendizaje";
+    case "asistente-ia": return "ia";
+    case "alertas-whatsapp": return "alertas";
+    case "soporte": return "soporte";
+    case "panel-responsable": return "responsable";
+    case "tecnologias": return "tecnologias";
+    case "gestion-usuarios": return "usuarios";
+    case "gestion-contenido": return "contenido";
+    default: return "dashboard";
+  }
+}
+
+export function hasViewAccess(roleName: string | undefined, viewId: string): boolean {
+  if (!roleName) return false;
+  const norm = roleName.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+  if (norm === "administrador") {
+    return true; // Admin gets access to all views
+  }
+
+  if (norm === "responsable interno" || norm === "responsable_interno") {
+    return ["dashboard", "alertas", "soporte", "responsable"].includes(viewId);
+  }
+
+  const areaRoles = ["ventas", "caja", "compras", "almacen", "administracion", "administración"];
+  if (areaRoles.includes(norm)) {
+    return ["dashboard", "ruta", "microaprendizaje", "ia", "soporte"].includes(viewId);
+  }
+
+  return false;
+}
+
+export function RoleGuard({ viewId, children }: { viewId: string; children: React.ReactNode }) {
+  const { usuario } = useAuth();
+  const roleName = usuario?.rol?.nombre;
+
+  if (!hasViewAccess(roleName, viewId)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+}
 
 interface NavItem {
   id: NavId;
@@ -96,7 +158,8 @@ const navItems: NavItem[] = [
 
 export default function AppShell() {
   const { usuario, token, logout } = useAuth();
-  const [active, setActive] = useState<NavId>("dashboard");
+  const location = useLocation();
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -110,42 +173,7 @@ export default function AppShell() {
   const userDisplayName = usuario ? `${usuario.nombre} ${usuario.apellido}` : cfg.user;
   const userInitials = userDisplayName.slice(0, 2).toUpperCase();
 
-  function renderView() {
-    const roleName = usuario?.rol?.nombre || "";
-    switch (active) {
-      case "dashboard":
-        return <DashboardView rol={rol!} />;
-      case "ruta":
-        return <RutaView rol={rol!} />;
-      case "microaprendizaje":
-        return <MicroaprendizajeView />;
-      case "ia":
-        return <AsistenteIAView />;
-      case "alertas":
-        return <AlertasView />;
-      case "soporte":
-        return <SoporteView />;
-      case "responsable":
-        if (roleName !== "Responsable Interno" && roleName !== "Administrador") {
-          return <DashboardView rol={rol!} />;
-        }
-        return <PanelResponsableView />;
-      case "tecnologias":
-        return <TecnologiasView />;
-      case "usuarios":
-        if (roleName !== "Administrador") {
-          return <DashboardView rol={rol!} />;
-        }
-        return <GestionUsuarios />;
-      case "contenido":
-        if (roleName !== "Administrador") {
-          return <DashboardView rol={rol!} />;
-        }
-        return <GestionContenido />;
-      default:
-        return <DashboardView rol={rol!} />;
-    }
-  }
+  const active = getNavIdFromPath(location.pathname);
 
   const SidebarContent = ({ mobile = false }) => (
     <div
@@ -198,23 +226,14 @@ export default function AppShell() {
 
       <nav className="flex-1 overflow-y-auto py-3 flex flex-col gap-0.5 px-2">
         {navItems
-          .filter((item) => {
-            const roleName = usuario?.rol?.nombre || "";
-            if (item.id === "responsable") {
-              return roleName === "Responsable Interno" || roleName === "Administrador";
-            }
-            if (item.id === "usuarios" || item.id === "contenido") {
-              return roleName === "Administrador";
-            }
-            return true;
-          })
+          .filter((item) => hasViewAccess(usuario?.rol?.nombre, item.id))
           .map((item) => {
             const isActive = active === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => {
-                  setActive(item.id);
+                  navigate(navPathMap[item.id]);
                   setMobileOpen(false);
                 }}
                 title={
@@ -415,7 +434,7 @@ export default function AppShell() {
           <button
             className="relative p-1.5 rounded-xl hover:opacity-80 transition-opacity"
             style={{ color: C.purple }}
-            onClick={() => setActive("alertas")}
+            onClick={() => navigate(navPathMap["alertas"])}
           >
             <Bell size={18} />
             <span
@@ -436,7 +455,20 @@ export default function AppShell() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6">
-          {renderView()}
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<DashboardView rol={rol!} />} />
+            <Route path="/ruta" element={<RoleGuard viewId="ruta"><RutaView rol={rol!} /></RoleGuard>} />
+            <Route path="/microaprendizaje" element={<RoleGuard viewId="microaprendizaje"><MicroaprendizajeView /></RoleGuard>} />
+            <Route path="/asistente-ia" element={<RoleGuard viewId="ia"><AsistenteIAView /></RoleGuard>} />
+            <Route path="/alertas-whatsapp" element={<RoleGuard viewId="alertas"><AlertasView /></RoleGuard>} />
+            <Route path="/soporte" element={<RoleGuard viewId="soporte"><SoporteView /></RoleGuard>} />
+            <Route path="/panel-responsable" element={<RoleGuard viewId="responsable"><PanelResponsableView /></RoleGuard>} />
+            <Route path="/tecnologias" element={<RoleGuard viewId="tecnologias"><TecnologiasView /></RoleGuard>} />
+            <Route path="/gestion-usuarios" element={<RoleGuard viewId="usuarios"><GestionUsuarios /></RoleGuard>} />
+            <Route path="/gestion-contenido" element={<RoleGuard viewId="contenido"><GestionContenido /></RoleGuard>} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
         </main>
       </div>
     </div>

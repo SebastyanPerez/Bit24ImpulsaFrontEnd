@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Headphones, Shield, TrendingUp, Zap, Send, ClipboardList } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Headphones, Shield, TrendingUp, Zap, Send, ClipboardList, Map, BookOpen, MessageSquare, Users, Clock } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { C, areaStats } from "../data/datosRegenda";
 import {
@@ -11,6 +11,7 @@ import {
 import { getUsuarios, Usuario } from "../api/usuarios";
 import { getTodasAlertas, crearAlerta, marcarAtendida, Alerta } from "../api/alertas";
 import { getTodosTickets, asignarTicket, actualizarEstado, Soporte } from "../api/soporte";
+import { getActividadReciente, Actividad } from "../api/actividad";
 import { useAuth } from "../context/AuthContext";
 import {
   Table,
@@ -37,6 +38,10 @@ export default function PanelResponsableView() {
   const [ticketsLoading, setTicketsLoading] = useState(true);
   const [ticketsError, setTicketsError] = useState<string | null>(null);
 
+  const [activities, setActivities] = useState<Actividad[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
+  const [activitiesError, setActivitiesError] = useState<string | null>(null);
+
   const [selectedUser, setSelectedUser] = useState("");
   const [formTitle, setFormTitle] = useState("");
   const [formMessage, setFormMessage] = useState("");
@@ -61,6 +66,20 @@ export default function PanelResponsableView() {
     }
   };
 
+  const fetchActivities = async () => {
+    try {
+      setActivitiesLoading(true);
+      setActivitiesError(null);
+      const data = await getActividadReciente();
+      setActivities(data);
+    } catch (err) {
+      console.error("Error al cargar actividades:", err);
+      setActivitiesError("Error al cargar la actividad reciente.");
+    } finally {
+      setActivitiesLoading(false);
+    }
+  };
+
   useEffect(() => {
     getUsuarios()
       .then((data) => setUsers(data.filter((u) => u.estado)))
@@ -81,6 +100,7 @@ export default function PanelResponsableView() {
 
     fetchAllAlerts();
     fetchTickets();
+    fetchActivities();
   }, []);
 
   const handleCreateAlert = async (e: React.FormEvent) => {
@@ -636,6 +656,141 @@ export default function PanelResponsableView() {
           )}
         </div>
       </div>
+
+      {/* ─── ACTIVIDAD RECIENTE ──────────────────────────────────────────────── */}
+      {(currentUser?.rol?.nombre === "Administrador" ||
+        currentUser?.rol?.nombre === "Responsable Interno") && (
+          <div
+            className="bg-white rounded-2xl p-5"
+            style={{ border: `1px solid ${C.purple}10` }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3
+                  className="font-extrabold text-base flex items-center gap-2"
+                  style={{
+                    color: C.purple,
+                    fontFamily: "var(--font-brand)",
+                  }}
+                >
+                  <Zap size={18} /> Actividad Reciente
+                </h3>
+                <p
+                  className="text-xs mt-0.5"
+                  style={{
+                    color: C.gray,
+                    fontFamily: "var(--font-body)",
+                  }}
+                >
+                  Historial de las últimas acciones realizadas por los usuarios en la plataforma.
+                </p>
+              </div>
+            </div>
+
+            {activitiesLoading && (
+              <div className="text-center py-6 text-xs text-gray-500" style={{ fontFamily: "var(--font-body)" }}>
+                Cargando historial de actividad...
+              </div>
+            )}
+
+            {activitiesError && (
+              <div className="text-center py-6 text-xs text-red-500" style={{ fontFamily: "var(--font-body)" }}>
+                {activitiesError}
+              </div>
+            )}
+
+            {!activitiesLoading && !activitiesError && (
+              <div className="relative pl-6 border-l border-slate-100 flex flex-col gap-6 ml-3 my-2">
+                {activities.map((act) => {
+                  let icon = <Zap size={10} />;
+                  let iconColor = C.purple;
+                  let iconBg = `${C.purple}15`;
+
+                  const mod = act.modulo.toLowerCase().trim();
+                  if (mod.includes("ruta")) {
+                    icon = <Map size={10} />;
+                    iconColor = C.purple;
+                    iconBg = `${C.purple}15`;
+                  } else if (mod.includes("tarea")) {
+                    icon = <ClipboardList size={10} />;
+                    iconColor = C.teal;
+                    iconBg = `${C.teal}15`;
+                  } else if (mod.includes("guia")) {
+                    icon = <BookOpen size={10} />;
+                    iconColor = C.purpleMid;
+                    iconBg = `${C.purpleMid}15`;
+                  } else if (mod.includes("alerta")) {
+                    icon = <MessageSquare size={10} />;
+                    iconColor = C.red;
+                    iconBg = `${C.red}15`;
+                  } else if (mod.includes("soporte")) {
+                    icon = <Headphones size={10} />;
+                    iconColor = C.teal;
+                    iconBg = `${C.teal}15`;
+                  } else if (mod.includes("usuario") || mod.includes("auth")) {
+                    icon = <Users size={10} />;
+                    iconColor = C.purple;
+                    iconBg = `${C.purple}15`;
+                  }
+
+                  return (
+                    <div key={act.id} className="relative flex flex-col gap-1 animate-fade-in">
+                      {/* Timeline dot */}
+                      <span
+                        className="absolute -left-[31px] top-0.5 w-5 h-5 rounded-full flex items-center justify-center border border-white shadow-sm"
+                        style={{
+                          backgroundColor: iconColor,
+                          color: "#fff"
+                        }}
+                      >
+                        {icon}
+                      </span>
+
+                      <div className="flex justify-between items-start gap-4 flex-wrap">
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className="text-xs text-slate-800 leading-normal"
+                            style={{ fontFamily: "var(--font-body)" }}
+                          >
+                            <span className="font-extrabold text-[#2a1028]" style={{ fontFamily: "var(--font-brand)" }}>
+                              {act.usuario.nombre}
+                            </span>{" "}
+                            <span className="text-slate-400">
+                              ({act.usuario.correo})
+                            </span>{" "}
+                            — {act.accion}
+                          </p>
+                          <span
+                            className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded mt-1"
+                            style={{
+                              backgroundColor: iconBg,
+                              color: iconColor,
+                              fontFamily: "var(--font-brand)"
+                            }}
+                          >
+                            MÓDULO: {act.modulo.toUpperCase()}
+                          </span>
+                        </div>
+                        <span
+                          className="text-[10px] text-slate-400 font-medium flex items-center gap-1 whitespace-nowrap"
+                          style={{ fontFamily: "var(--font-body)" }}
+                        >
+                          <Clock size={10} />
+                          {new Date(act.fecha).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {activities.length === 0 && (
+                  <p className="text-xs text-slate-400" style={{ fontFamily: "var(--font-body)" }}>
+                    No hay actividad reciente registrada.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
       {/* ─── GESTIÓN DE SOPORTE ──────────────────────────────────────────────── */}
       {(currentUser?.rol?.nombre === "Administrador" ||

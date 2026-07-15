@@ -23,12 +23,8 @@ export default function RutaView({ rol }: { rol: RolId }) {
         setError(null);
         const routes = await getRutas();
 
-        // Find route matching user's RolId
-        const matchedRoute = routes.find(
-          (r) =>
-            mapBackendRoleToRolId(r.nombre) === rol ||
-            (r.nombre && r.nombre.toLowerCase().includes(cfg.label.toLowerCase()))
-        );
+        // Select the first active route, trusting backend-side filtering
+        const matchedRoute = routes[0];
 
         if (!matchedRoute) {
           setTasks([]);
