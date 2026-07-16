@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Send, Sparkles } from "lucide-react";
 import { C, aiResponses } from "../data/datosRegenda";
 import { FilledIconCard } from "../components/ui-shared/DesignSystem";
+import { preguntar, getHistorial } from "../api/asistenteIA";
 
-// ─── MÓDULO 5: Asistente IA generativa (simulada) ─────────────────────────────
+// ─── MÓDULO 5: Asistente IA generativa (Gemini) ───────────────────────────
 export default function AsistenteIAView() {
   const [messages, setMessages] = useState<{ role: "assistant" | "user"; text: string }[]>([
     {
@@ -14,7 +15,34 @@ export default function AsistenteIAView() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function sendMessage(text: string) {
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const historyData = await getHistorial();
+        const loadedMessages: { role: "assistant" | "user"; text: string }[] = [];
+        // Insert greeting
+        loadedMessages.push({
+          role: "assistant",
+          text: "Hola, soy **Impulsa AI** 🤖 Estoy aquí para ayudarte con cualquier duda sobre Bit24 en REGENDA. Escribí tu pregunta o elegí una sugerida.",
+        });
+
+        // The API returns historical logs sorted by created_at DESC (newest first).
+        // Reverse them so they render chronologically (oldest first).
+        const chronological = [...historyData].reverse();
+        chronological.forEach((h) => {
+          loadedMessages.push({ role: "user", text: h.pregunta });
+          loadedMessages.push({ role: "assistant", text: h.respuesta || "" });
+        });
+        setMessages(loadedMessages);
+      } catch (err) {
+        console.error("Error al cargar historial del asistente:", err);
+      }
+    };
+
+    fetchHistory();
+  }, []);
+
+  const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return;
     setMessages((prev) => [
       ...prev,
@@ -22,17 +50,25 @@ export default function AsistenteIAView() {
     ]);
     setInput("");
     setLoading(true);
-    setTimeout(() => {
-      const response =
-        aiResponses[text] ??
-        "Entendido. Para esa consulta te recomiendo revisar la guía en **Microaprendizaje** o abrir un ticket en **Soporte** si el problema persiste. ¿Puedo ayudarte con algo más?";
+    try {
+      const response = await preguntar(text);
       setMessages((prev) => [
         ...prev,
-        { role: "assistant" as const, text: response },
+        { role: "assistant" as const, text: response.respuesta || "No recibí respuesta del asistente." },
       ]);
+    } catch (err) {
+      console.error("Error al enviar pregunta a la IA:", err);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant" as const,
+          text: "Lo siento, ocurrió un error de conexión al consultar al asistente. Por favor, intente más tarde.",
+        },
+      ]);
+    } finally {
       setLoading(false);
-    }, 900);
-  }
+    }
+  };
 
   function renderText(t: string) {
     return t
@@ -59,8 +95,7 @@ export default function AsistenteIAView() {
             fontFamily: "var(--font-body)",
           }}
         >
-          Respuestas en lenguaje natural sobre Bit24 — IA
-          simulada con respuestas predefinidas
+          Respuestas en lenguaje natural sobre Bit24 — Gemini
         </p>
       </div>
 
@@ -102,23 +137,23 @@ export default function AsistenteIAView() {
                 fontFamily: "var(--font-body)",
               }}
             >
-              ● En línea · Simulada para demo
+              ● En línea · Conectado
             </p>
           </div>
           <span
             className="ml-auto text-xs font-bold px-2.5 py-1 rounded-full"
             style={{
-              backgroundColor: C.yellowLight,
-              color: "#7a4f00",
-              border: `1px solid ${C.yellow}`,
+              backgroundColor: `${C.purple}20`,
+              color: C.purple,
+              border: `1px solid ${C.purple}30`,
               fontFamily: "var(--font-brand)",
             }}
           >
-            Demo simulada
+            Powered by Gemini
           </span>
         </div>
 
-        {/* Preguntas sugeridas — Gestalt similitud: chips con mismo estilo */}
+        {/* Preguntas sugeridas ── Gestalt similitud */}
         <div
           className="p-3 flex gap-2 flex-wrap"
           style={{
