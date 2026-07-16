@@ -1,12 +1,10 @@
 import { useState, useEffect } from "react";
-import { getProgresoResumen, getMiProgreso } from "../api/progreso";
+import { getDashboardData, DashboardData } from "../api/dashboard";
 import {
   C,
   RolId,
   roleConfig,
-  areaStats,
   adoptionTrend,
-  whatsappAlerts,
 } from "../data/datosRegenda";
 import {
   KPICard,
@@ -38,12 +36,9 @@ import { useAuth } from "../context/AuthContext";
 // ─── MÓDULO 2: Dashboard post-login ───────────────────────────────────────────
 export default function DashboardView({ rol }: { rol: RolId }) {
   const { usuario } = useAuth();
-  const [stats, setStats] = useState(areaStats);
-  const [personalProgress, setPersonalProgress] = useState<{
-    porcentaje_adopcion: number;
-    tareas_completadas: number;
-    tareas_pendientes: number;
-  } | null>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
 
   const roleName = usuario?.rol?.nombre || "";
   const isAdminOrResponsible =
@@ -53,73 +48,43 @@ export default function DashboardView({ rol }: { rol: RolId }) {
     rol === "responsable";
 
   useEffect(() => {
-    // 1. Obtener progreso de tareas personales del usuario autenticado (para la tarjeta “Tareas completadas”)
-    getMiProgreso()
-      .then((res) => {
-        if (Array.isArray(res)) {
-          const total = res.length;
-          const completadas = res.filter((item: any) => item.estado === "Completado" || item.estado === "completado").length;
-          const pendientes = res.filter((item: any) => item.estado !== "Completado" && item.estado !== "completado").length;
-          const porcentaje = total > 0 ? Math.round((completadas / total) * 100) : 0;
+    const fetchDashboard = async () => {
+      try {
+        setDashboardLoading(true);
+        setDashboardError(null);
+        const data = await getDashboardData();
+        setDashboardData(data);
+      } catch (err) {
+        console.error("Error al cargar datos del dashboard:", err);
+        setDashboardError("Error al cargar datos.");
+      } finally {
+        setDashboardLoading(false);
+      }
+    };
 
-          setPersonalProgress((prev) => ({
-            porcentaje_adopcion: isAdminOrResponsible ? (prev?.porcentaje_adopcion ?? 0) : porcentaje,
-            tareas_completadas: completadas,
-            tareas_pendientes: pendientes
-          }));
-        }
-      })
-      .catch((err) => console.error("Error al cargar mi progreso personal:", err));
-
-    // 2. Si es Administrador/Responsable Interno, cargar los datos de todas las áreas
-    if (isAdminOrResponsible) {
-      getProgresoResumen()
-        .then((resumen) => {
-          if (Array.isArray(resumen)) {
-            // Actualizar tabla/lista “Avance por área”
-            setStats((prev) =>
-              prev.map((a) => {
-                const matched = resumen.find(
-                  (r) =>
-                    r.rol_nombre.toLowerCase() === a.area.toLowerCase() ||
-                    (a.area === "Almacén" && r.rol_nombre === "Almacén")
-                );
-                return matched ? { ...a, progress: matched.porcentaje_adopcion } : a;
-              })
-            );
-
-            // Calcular la adopción promedio general de todas las áreas
-            const totalAreas = resumen.length || 1;
-            const avgAdopcion = resumen.reduce((acc, curr) => acc + (curr.porcentaje_adopcion || 0), 0) / totalAreas;
-
-            setPersonalProgress((prev) => ({
-              porcentaje_adopcion: Math.round(avgAdopcion),
-              tareas_completadas: prev?.tareas_completadas ?? 0,
-              tareas_pendientes: prev?.tareas_pendientes ?? 0
-            }));
-          }
-        })
-        .catch((err) => console.error("Error al cargar resumen de progreso:", err));
-    }
-  }, [rol, isAdminOrResponsible]);
+    fetchDashboard();
+  }, [rol]);
 
   const cfg = roleConfig[rol];
-  const completedTasks = personalProgress ? personalProgress.tareas_completadas : cfg.tasks.filter(
-    (t) => t.status === "completado",
-  ).length;
-  const pendingTasks = personalProgress ? personalProgress.tareas_pendientes : cfg.tasks.filter(
-    (t) => t.status !== "completado",
-  ).length;
-  const activeAlerts = whatsappAlerts.filter(
-    (a) => a.enabled,
-  ).length;
-  const progressAdoption = personalProgress ? personalProgress.porcentaje_adopcion : cfg.progress;
+  const completedTasks = dashboardData ? dashboardData.metrics.tareas_completadas : 0;
+  const pendingTasks = dashboardData ? dashboardData.metrics.tareas_pendientes : 0;
+  const activeAlerts = dashboardData ? dashboardData.alertas_activas : 0;
+  const progressAdoption = dashboardData ? dashboardData.metrics.progreso_general_porcentaje : 0;
 
-  /* Gestalt similitud: todas las KPI cards tienen igual forma, tamaño y estructura */
   const iconAlternate = (i: number) =>
     i % 2 === 0 ? "filled" : "outline";
 
   const userDisplayName = usuario ? `${usuario.nombre} ${usuario.apellido}` : cfg.user;
+
+  const areaColors: Record<string, string> = {
+    "Ventas": "#5D1451",
+    "Caja": "#3DB1AA",
+    "Almacén": "#ffd37f",
+    "Compras": "#8a2b7a",
+    "Administración": "#3DB1AA"
+  };
+
+  const currentTasks = dashboardData?.mis_tareas_recientes || [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -171,7 +136,6 @@ export default function DashboardView({ rol }: { rol: RolId }) {
             </p>
           )}
         </div>
-
       </div>
 
       {/* KPIs — Gestalt proximidad: grupo de métricas unidas */}
@@ -179,7 +143,7 @@ export default function DashboardView({ rol }: { rol: RolId }) {
         <KPICard
           icon={<TrendingUp size={18} />}
           label="Adopción del área"
-          value={`${progressAdoption}%`}
+          value={dashboardLoading ? "..." : `${progressAdoption}%`}
           sub="Meta: 90% este mes"
           color={cfg.color}
           trend="+5%"
@@ -188,15 +152,15 @@ export default function DashboardView({ rol }: { rol: RolId }) {
         <KPICard
           icon={<CheckCircle2 size={18} />}
           label="Tareas completadas"
-          value={`${completedTasks}`}
-          sub={`${pendingTasks} pendientes`}
+          value={dashboardLoading ? "..." : `${completedTasks}`}
+          sub={dashboardLoading ? "Cargando..." : `${pendingTasks} pendientes`}
           color={C.teal}
           iconStyle={iconAlternate(1)}
         />
         <KPICard
           icon={<AlertTriangle size={18} />}
           label="Alertas activas"
-          value={`${activeAlerts}`}
+          value={dashboardLoading ? "..." : `${activeAlerts}`}
           sub="Requieren atención"
           color={C.red}
           iconStyle={iconAlternate(2)}
@@ -204,8 +168,12 @@ export default function DashboardView({ rol }: { rol: RolId }) {
         <KPICard
           icon={<Headphones size={18} />}
           label="Casos de soporte"
-          value="3"
-          sub="1 pendiente, 1 en atención"
+          value={dashboardLoading ? "..." : String(dashboardData?.casos_soporte.total || 0)}
+          sub={
+            dashboardLoading
+              ? "Cargando..."
+              : `${dashboardData?.casos_soporte.pendiente || 0} pendiente, ${dashboardData?.casos_soporte.en_proceso || 0} en atención`
+          }
           color={C.purpleMid}
           iconStyle={iconAlternate(3)}
         />
@@ -322,35 +290,43 @@ export default function DashboardView({ rol }: { rol: RolId }) {
               Avance por área
             </h2>
             <div className="flex flex-col gap-4">
-              {stats.map((a) => (
-                <div key={a.area}>
-                  <div className="flex justify-between text-xs mb-1.5">
-                    <span
-                      className="font-semibold"
-                      style={{
-                        color: "#2a1028",
-                        fontFamily: "var(--font-brand)",
-                      }}
-                    >
-                      {a.area}
-                    </span>
-                    <span
-                      className="font-extrabold"
-                      style={{
-                        color: a.color,
-                        fontFamily: "var(--font-brand)",
-                      }}
-                    >
-                      {a.progress}%
-                    </span>
-                  </div>
-                  <ProgressBar
-                    value={a.progress}
-                    color={a.color}
-                    size="sm"
-                  />
+              {dashboardLoading && (
+                <div className="text-center py-6 text-xs text-gray-500" style={{ fontFamily: "var(--font-body)" }}>
+                  Cargando avance de áreas...
                 </div>
-              ))}
+              )}
+              {!dashboardLoading && (dashboardData?.avance_por_area || []).map((a) => {
+                const color = areaColors[a.area] || C.purple;
+                return (
+                  <div key={a.area}>
+                    <div className="flex justify-between text-xs mb-1.5">
+                      <span
+                        className="font-semibold"
+                        style={{
+                          color: "#2a1028",
+                          fontFamily: "var(--font-brand)",
+                        }}
+                      >
+                        {a.area}
+                      </span>
+                      <span
+                        className="font-extrabold"
+                        style={{
+                          color: color,
+                          fontFamily: "var(--font-brand)",
+                        }}
+                      >
+                        {a.progress}%
+                      </span>
+                    </div>
+                    <ProgressBar
+                      value={a.progress}
+                      color={color}
+                      size="sm"
+                    />
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -383,7 +359,17 @@ export default function DashboardView({ rol }: { rol: RolId }) {
         </div>
         {/* Gestalt proximidad: tareas agrupadas en grid con separación uniforme */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {cfg.tasks.map((t) => (
+          {dashboardLoading && (
+            <div className="text-center py-8 text-xs text-gray-500 col-span-2" style={{ fontFamily: "var(--font-body)" }}>
+              Cargando tareas recientes...
+            </div>
+          )}
+          {!dashboardLoading && currentTasks.length === 0 && (
+            <div className="text-center py-8 text-xs text-gray-400 col-span-2 bg-[#fdfbfd] rounded-xl border border-dashed border-purple-100" style={{ fontFamily: "var(--font-body)" }}>
+              No hay tareas en tu ruta asignada.
+            </div>
+          )}
+          {!dashboardLoading && currentTasks.map((t) => (
             <div
               key={t.id}
               className="flex items-center gap-3 p-3 rounded-xl"
@@ -446,20 +432,7 @@ export default function DashboardView({ rol }: { rol: RolId }) {
                 fontFamily: "var(--font-body)",
               }}
             >
-              Hola {cfg.user}. Según tu avance en{" "}
-              <strong className="text-white">
-                {cfg.label}
-              </strong>
-              , te recomendamos completar{" "}
-              <strong className="text-white">
-                "
-                {cfg.tasks.find(
-                  (t) => t.status !== "completado",
-                )?.title ?? "tu siguiente tarea"}
-                "
-              </strong>{" "}
-              hoy. Esto subirá tu adopción del área al menos 8
-              puntos.
+              {dashboardLoading ? "Cargando sugerencia..." : (dashboardData?.recomendacion || "No hay sugerencias en este momento.")}
             </p>
           </div>
           <BtnSecondary small onClick={() => { }}>

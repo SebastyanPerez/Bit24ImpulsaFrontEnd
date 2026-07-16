@@ -12,6 +12,7 @@ import { getUsuarios, Usuario } from "../api/usuarios";
 import { getTodasAlertas, crearAlerta, marcarAtendida, Alerta } from "../api/alertas";
 import { getTodosTickets, asignarTicket, actualizarEstado, Soporte } from "../api/soporte";
 import { getActividadReciente, Actividad } from "../api/actividad";
+import { getDashboardResponsable, DashboardResponsableData } from "../api/dashboard";
 import { useAuth } from "../context/AuthContext";
 import {
   Table,
@@ -41,6 +42,10 @@ export default function PanelResponsableView() {
   const [activities, setActivities] = useState<Actividad[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [activitiesError, setActivitiesError] = useState<string | null>(null);
+
+  const [dashboardData, setDashboardData] = useState<DashboardResponsableData | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
 
   const [selectedUser, setSelectedUser] = useState("");
   const [formTitle, setFormTitle] = useState("");
@@ -80,6 +85,20 @@ export default function PanelResponsableView() {
     }
   };
 
+  const fetchDashboardData = async () => {
+    try {
+      setDashboardLoading(true);
+      setDashboardError(null);
+      const data = await getDashboardResponsable();
+      setDashboardData(data);
+    } catch (err) {
+      console.error("Error al cargar datos del dashboard:", err);
+      setDashboardError("Error al cargar métricas de adopción.");
+    } finally {
+      setDashboardLoading(false);
+    }
+  };
+
   useEffect(() => {
     getUsuarios()
       .then((data) => setUsers(data.filter((u) => u.estado)))
@@ -101,6 +120,7 @@ export default function PanelResponsableView() {
     fetchAllAlerts();
     fetchTickets();
     fetchActivities();
+    fetchDashboardData();
   }, []);
 
   const handleCreateAlert = async (e: React.FormEvent) => {
@@ -160,7 +180,9 @@ export default function PanelResponsableView() {
     }
   };
 
-  const barData = areaStats.map((a) => ({
+  const currentAreaStats = dashboardData?.avance_areas_detalle || [];
+
+  const barData = currentAreaStats.map((a) => ({
     area: a.area,
     avance: a.progress,
   }));
@@ -246,25 +268,24 @@ export default function PanelResponsableView() {
         <KPICard
           icon={<TrendingUp size={18} />}
           label="Adopción global"
-          value="62%"
+          value={dashboardLoading ? "..." : `${dashboardData?.adopcion_global || 0}%`}
           sub="Promedio entre áreas"
           color={C.purple}
-          trend="+5%"
           iconStyle="filled"
         />
         <KPICard
           icon={<AlertTriangle size={18} />}
           label="Áreas en riesgo alto"
-          value="1"
-          sub="Almacén — 3 días inactivo"
+          value={dashboardLoading ? "..." : String(dashboardData?.areas_riesgo_alto || 0)}
+          sub={dashboardLoading ? "Cargando..." : (dashboardData?.areas_riesgo_alto && dashboardData.areas_riesgo_alto > 0 ? "Requieren atención" : "Zonas estables")}
           color={C.red}
           iconStyle="outline"
         />
         <KPICard
           icon={<CheckCircle2 size={18} />}
           label="Usuarios activos hoy"
-          value="3/5"
-          sub="Ventas, Admin, Compras"
+          value={dashboardLoading ? "..." : (dashboardData?.usuarios_activos || "0/0")}
+          sub={dashboardLoading ? "Cargando..." : (dashboardData?.usuarios_activos_sub || "Ninguna")}
           color={C.teal}
           iconStyle="filled"
         />
@@ -335,7 +356,17 @@ export default function PanelResponsableView() {
       </div>
 
       <div className="flex flex-col gap-3">
-        {areaStats.map((a) => (
+        {dashboardLoading && (
+          <div className="text-center py-8 text-xs text-gray-500 bg-white rounded-2xl p-4 border border-dashed border-purple-100" style={{ fontFamily: "var(--font-body)" }}>
+            Cargando áreas de adopción...
+          </div>
+        )}
+        {!dashboardLoading && currentAreaStats.length === 0 && (
+          <div className="text-center py-8 text-xs text-gray-400 bg-white rounded-2xl p-4 border border-dashed border-purple-100" style={{ fontFamily: "var(--font-body)" }}>
+            No hay áreas de adopción registradas.
+          </div>
+        )}
+        {currentAreaStats.map((a) => (
           <div
             key={a.area}
             className="bg-white rounded-2xl p-4 transition-shadow hover:shadow-md"
@@ -753,11 +784,13 @@ export default function PanelResponsableView() {
                             style={{ fontFamily: "var(--font-body)" }}
                           >
                             <span className="font-extrabold text-[#2a1028]" style={{ fontFamily: "var(--font-brand)" }}>
-                              {act.usuario.nombre}
+                              {act.usuario.nombre} {act.usuario.apellido}
                             </span>{" "}
-                            <span className="text-slate-400">
-                              ({act.usuario.correo})
-                            </span>{" "}
+                            {act.usuario.correo && (
+                              <span className="text-slate-400">
+                                ({act.usuario.correo})
+                              </span>
+                            )}{" "}
                             — {act.accion}
                           </p>
                           <span
