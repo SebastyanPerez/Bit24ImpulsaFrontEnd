@@ -71,56 +71,46 @@ export default function PanelResponsableView() {
     }
   };
 
-  const fetchActivities = async () => {
-    try {
-      setActivitiesLoading(true);
-      setActivitiesError(null);
-      const data = await getActividadReciente();
-      setActivities(data);
-    } catch (err) {
-      console.error("Error al cargar actividades:", err);
-      setActivitiesError("Error al cargar la actividad reciente.");
-    } finally {
-      setActivitiesLoading(false);
-    }
-  };
-
-  const fetchDashboardData = async () => {
-    try {
-      setDashboardLoading(true);
-      setDashboardError(null);
-      const data = await getDashboardResponsable();
-      setDashboardData(data);
-    } catch (err) {
-      console.error("Error al cargar datos del dashboard:", err);
-      setDashboardError("Error al cargar métricas de adopción.");
-    } finally {
-      setDashboardLoading(false);
-    }
-  };
-
   useEffect(() => {
-    getUsuarios()
-      .then((data) => setUsers(data.filter((u) => u.estado)))
-      .catch((err) => console.error("Error al cargar usuarios:", err));
+    const loadAllData = async () => {
+      setDashboardLoading(true);
+      setAlertsLoading(true);
+      setTicketsLoading(true);
+      setActivitiesLoading(true);
+      setDashboardError(null);
+      setAlertsError(null);
+      setTicketsError(null);
+      setActivitiesError(null);
 
-    const fetchAllAlerts = async () => {
       try {
-        setAlertsLoading(true);
-        setAlertsError(null);
-        const data = await getTodasAlertas();
-        setAllAlerts(data);
+        const [usersData, alertsData, ticketsData, activitiesData, dashboardResData] = await Promise.all([
+          getUsuarios(),
+          getTodasAlertas(),
+          getTodosTickets(),
+          getActividadReciente(),
+          getDashboardResponsable()
+        ]);
+
+        setUsers(usersData.filter((u) => u.estado));
+        setAllAlerts(alertsData);
+        setTickets(ticketsData);
+        setActivities(activitiesData);
+        setDashboardData(dashboardResData);
       } catch (err) {
-        setAlertsError("Error al cargar las alertas del sistema.");
+        console.error("Error al cargar los datos del dashboard:", err);
+        setDashboardError("Error al cargar métricas de adopción.");
+        setAlertsError("Error al cargar las alertas.");
+        setTicketsError("Error al cargar los tickets.");
+        setActivitiesError("Error al cargar las actividades.");
       } finally {
+        setDashboardLoading(false);
         setAlertsLoading(false);
+        setTicketsLoading(false);
+        setActivitiesLoading(false);
       }
     };
 
-    fetchAllAlerts();
-    fetchTickets();
-    fetchActivities();
-    fetchDashboardData();
+    loadAllData();
   }, []);
 
   const handleCreateAlert = async (e: React.FormEvent) => {
