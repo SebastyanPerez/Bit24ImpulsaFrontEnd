@@ -143,10 +143,10 @@ npm run build
 ## 📊 Estado Actual del Sprint 1
 
 * **Duración**: 2 semanas (Incrementos de desarrollo finalizados).
-* **Progreso general**: ~90% de avance estimado.
+* **Progreso general**: 100% Completado.
 
 ```text
-[██████████████████░░] 90% Completado
+[████████████████████] 100% Completado
 ```
 
 ### ✅ Funcionalidades Implementadas
@@ -156,17 +156,18 @@ npm run build
 3. **Autenticación real**: `LoginScreen` conectado a `POST /auth/login` del backend vía Axios.
 4. **Persistencia de sesión**: El token y los datos de usuario se persisten en `localStorage` (`bit24_token` y `bit24_usuario`), restaurándose automáticamente en `AuthContext` al recargar la página.
 5. **Base URL Dinámica**: Configuración de `VITE_API_BASE_URL` en el cliente HTTP (`axiosClient.ts`) mediante variables de entorno `.env`.
-6. **Control de Acceso y Sidebar por Rol**: Panels administrativos restringidos de forma segura al rol `Administrador` tanto en el menú lateral como en el enrutamiento.
-7. **Módulo de Gestión de Contenido (`GestionContenido.tsx`)**: Panel de control administrativo con CRUD de 3 niveles jerárquicos (Rutas, Tareas, Guías) totalmente integrado con la base de datos real.
+6. **Control de Acceso y Sidebar por Rol (RBAC)**: Panels administrativos restringidos al rol `Administrador` y `Responsable Interno` en menú lateral (`AppShell.tsx`) y mediante `RoleGuard`.
+7. **Gestión de Contenido (`GestionContenido.tsx`)**: CRUD completo de 3 niveles jerárquicos (Rutas, Tareas, Guías) integrado con base de datos.
 8. **Gestión de Usuarios (`GestionUsuarios.tsx`)**: CRUD de usuarios completado, añadiendo soporte para restablecimiento opcional y seguro de contraseñas.
-9. **Serialización y Rehidratación JSON**: Pasos, orden de visualización y categoría de las guías se guardan y leen automáticamente desde el campo de texto `contenido` del modelo de la base de datos para alineación con las restricciones del esquema backend.
-10. **Validación Numérica de Duración**: El input del modal de guías fue validado a nivel de cliente para permitir únicamente valores numéricos (`type="number"`), evitando errores de parseo o de integridad al guardar.
+9. **Integración Asistente IA (`AsistenteIAView.tsx`)**: Conectado a la API Gemini mediante el backend para resolver consultas interactivas, con soporte de historial de chat y sugerencias predefinidas.
+10. **Línea de Actividad Reciente**: Registro en tiempo real de inicios de sesión y consultas de IA en el backend, mostrando una línea de tiempo dinámica en el `PanelResponsableView` con resolución de nombres y correos.
+11. **Dashboard y Panel Responsable Web**: Conectados a la base de datos real. Muestra KPIs válidos para soporte (totales/pendientes/en atención) calculados al vuelo, porcentaje de adopción por área en gráfico de barras, y las tareas personales recientes con su estado de progreso.
+12. **Recomendación Inteligente de Impulsa AI**: Generación automatizada de sugerencias basadas en el nombre y primera tarea pendiente en la ruta del usuario logueado.
 
 ### ⏳ Funcionalidades Pendientes
 
-1. **Integración progresiva de endpoints secundarios**: Conectar las vistas de soporte, alertas e IA (que siguen consumiendo mocks locales o de API no transaccional).
-2. **Manejo consistente de errores**: Seguir puliendo la integración de notificaciones visuales ante errores de red o sesión caída en vistas de menor relevancia.
-3. **Pruebas automatizadas** (unitarias/e2e).
+1. **Pruebas automatizadas avanzadas** (unitarias/e2e).
+2. **Mapeo de integraciones adicionales de Bitrix24**.
 
 ---
 
