@@ -722,7 +722,7 @@ export default function PanelResponsableView() {
 
             {!activitiesLoading && !activitiesError && (
               <div className="relative pl-6 border-l border-slate-100 flex flex-col gap-6 ml-3 my-2">
-                {activities.map((act) => {
+                {activities.slice(0, 4).map((act) => {
                   let icon = <Zap size={10} />;
                   let iconColor = C.purple;
                   let iconBg = `${C.purple}15`;

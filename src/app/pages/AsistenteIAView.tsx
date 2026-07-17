@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Send, Sparkles } from "lucide-react";
 import { C, aiResponses } from "../data/datosRegenda";
 import { FilledIconCard } from "../components/ui-shared/DesignSystem";
@@ -14,6 +14,15 @@ export default function AsistenteIAView() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, loading]);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -245,6 +254,7 @@ export default function AsistenteIAView() {
               </div>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Input */}
