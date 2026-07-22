@@ -32,10 +32,12 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router";
 
 // ─── MÓDULO 2: Dashboard post-login ───────────────────────────────────────────
 export default function DashboardView({ rol }: { rol: RolId }) {
   const { usuario } = useAuth();
+  const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
@@ -435,7 +437,7 @@ export default function DashboardView({ rol }: { rol: RolId }) {
               {dashboardLoading ? "Cargando sugerencia..." : (dashboardData?.recomendacion || "No hay sugerencias en este momento.")}
             </p>
           </div>
-          <BtnSecondary small onClick={() => { }}>
+          <BtnSecondary small onClick={() => navigate("/asistente-ia")}>
             <Play size={12} /> Ir ahora
           </BtnSecondary>
         </div>
